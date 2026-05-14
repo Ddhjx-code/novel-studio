@@ -54,7 +54,7 @@ export default function AppLayout() {
     {
       key: 'bible',
       icon: <ReadOutlined />,
-      label: '圣经编辑',
+      label: '设定集',
       disabled: !currentProject,
     },
     {

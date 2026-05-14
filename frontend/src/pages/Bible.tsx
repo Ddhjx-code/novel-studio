@@ -169,7 +169,7 @@ export default function Bible() {
       </div>
 
       <Modal
-        title="新建 Bible 文件"
+        title="新建设定文件"
         open={modalOpen}
         onOk={handleCreateFile}
         onCancel={() => setModalOpen(false)}
