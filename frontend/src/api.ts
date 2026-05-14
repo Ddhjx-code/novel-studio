@@ -10,6 +10,8 @@ import type {
   PromptAgentDetail,
   PromptSkillFile,
   ReloadAgentsResponse,
+  TaskCard,
+  TaskListResponse,
 } from './types'
 
 export const api = axios.create({
@@ -199,4 +201,23 @@ export async function getPromptSkillFile(skill: string, filePath: string): Promi
 
 export async function savePromptSkillFile(skill: string, filePath: string, content: string): Promise<void> {
   await api.put(`/prompts/skills/${skill}/${filePath}`, { content })
+}
+
+// --- Tasks API ---
+
+export async function listTasks(project: string, status?: string): Promise<TaskListResponse> {
+  const params: Record<string, string> = {}
+  if (status) params.status = status
+  const resp = await api.get<TaskListResponse>(`/projects/${project}/tasks`, { params })
+  return resp.data
+}
+
+export async function getTask(project: string, taskId: string): Promise<TaskCard> {
+  const resp = await api.get<TaskCard>(`/projects/${project}/tasks/${taskId}`)
+  return resp.data
+}
+
+export async function retryTask(project: string, taskId: string): Promise<PipelineResponse> {
+  const resp = await api.post<PipelineResponse>(`/projects/${project}/tasks/${taskId}/retry`)
+  return resp.data
 }

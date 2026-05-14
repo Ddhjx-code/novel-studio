@@ -22,6 +22,7 @@ import { useParams } from 'react-router-dom'
 import { useProject } from '../context/ProjectContext'
 import { usePipeline } from '../hooks/usePipeline'
 import { generateChapter, generateOutline, polishChapter, reviewChapter } from '../api'
+import TaskHistory from '../components/TaskHistory'
 
 const { TextArea } = Input
 
@@ -163,6 +164,12 @@ export default function Workbench() {
           </Card>
         </Col>
       </Row>
+
+      {project && (
+        <Card title="任务历史" size="small">
+          <TaskHistory project={project} />
+        </Card>
+      )}
     </Space>
   )
 }

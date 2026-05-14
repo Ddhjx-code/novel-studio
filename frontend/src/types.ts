@@ -17,6 +17,7 @@ export interface ChapterContent {
 
 export interface PipelineResponse {
   pipeline_id: string
+  task_id?: string
   status: string
 }
 
@@ -70,4 +71,28 @@ export interface PromptSkillEntry {
 export interface PromptSkillFile {
   path: string
   content: string
+}
+
+// --- Tasks ---
+
+export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
+export type TaskKind = 'chapter_generate' | 'outline_generate' | 'chapter_review' | 'chapter_polish'
+
+export interface TaskCard {
+  id: string
+  kind: TaskKind
+  status: TaskStatus
+  project_name: string
+  chapter_num: number | null
+  pipeline_id: string
+  steps_requested: string[]
+  steps_completed: string[]
+  error: string | null
+  created_at: string
+  updated_at: string
+  metadata: Record<string, unknown>
+}
+
+export interface TaskListResponse {
+  tasks: TaskCard[]
 }

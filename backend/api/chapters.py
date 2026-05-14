@@ -8,11 +8,16 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from backend.api.tasks import (
+    _run_pipeline_with_tracking,
+    _run_review_with_tracking,
+)
 from backend.config import get_settings
 from backend.orchestrator.chapter_pipeline import ChapterPipeline, PipelineStep
 from backend.orchestrator.finalize import LLMConfig
 from backend.orchestrator.outline_pipeline import OutlinePipeline
 from backend.orchestrator.review_pipeline import ReviewPipeline
+from backend.projects.repository import ProjectRepository
 from backend.projects.workspace import ProjectWorkspace
 from backend.vectorstore.embedding import EmbeddingConfig
 
@@ -25,6 +30,11 @@ def _get_workspace(project_name: str) -> ProjectWorkspace:
     if not project_dir.is_dir():
         raise HTTPException(status_code=404, detail="Project not found")
     return ProjectWorkspace(settings.projects_dir, project_name)
+
+
+def _get_repository(project_name: str) -> ProjectRepository:
+    settings = get_settings()
+    return ProjectRepository(settings.projects_dir, project_name)
 
 
 def _get_llm_config() -> LLMConfig:
@@ -63,6 +73,7 @@ class ChapterContentBody(BaseModel):
 @router.post("/{n}/generate", status_code=202)
 async def generate_chapter(project_name: str, n: int, body: GenerateBody, request: Request):
     ws = _get_workspace(project_name)
+    repo = _get_repository(project_name)
     mgr = request.app.state.session_manager
 
     steps = None
@@ -78,11 +89,21 @@ async def generate_chapter(project_name: str, n: int, body: GenerateBody, reques
         embedding_config=_get_embedding_config(),
     )
 
+    step_values = [s.value for s in (steps or pipeline._steps)]
+    task = repo.create_task(
+        "chapter_generate",
+        chapter_num=n,
+        pipeline_id=pipeline.pipeline_id,
+        steps=step_values,
+    )
+
     pipelines: dict[str, Any] = request.app.state.active_pipelines
     pipelines[pipeline.pipeline_id] = pipeline
-    asyncio.create_task(_run_pipeline(pipeline, pipelines))
+    asyncio.create_task(
+        _run_pipeline_with_tracking(pipeline, pipelines, repo, task.id)
+    )
 
-    return {"pipeline_id": pipeline.pipeline_id, "status": "started"}
+    return {"pipeline_id": pipeline.pipeline_id, "task_id": task.id, "status": "started"}
 
 
 @router.get("/{n}")
@@ -104,31 +125,49 @@ async def save_chapter(project_name: str, n: int, body: ChapterContentBody):
 @router.post("/{n}/review", status_code=202)
 async def review_chapter(project_name: str, n: int, request: Request):
     ws = _get_workspace(project_name)
+    repo = _get_repository(project_name)
     mgr = request.app.state.session_manager
 
     pipeline = ReviewPipeline(
         session_manager=mgr, workspace=ws, chapter_num=n, mode="review"
     )
+    task = repo.create_task(
+        "chapter_review",
+        chapter_num=n,
+        pipeline_id=pipeline.pipeline_id,
+    )
+
     pipelines: dict[str, Any] = request.app.state.active_pipelines
     pipelines[pipeline.pipeline_id] = pipeline
-    asyncio.create_task(_run_review(pipeline, pipelines))
+    asyncio.create_task(
+        _run_review_with_tracking(pipeline, pipelines, repo, task.id)
+    )
 
-    return {"pipeline_id": pipeline.pipeline_id, "status": "started"}
+    return {"pipeline_id": pipeline.pipeline_id, "task_id": task.id, "status": "started"}
 
 
 @router.post("/{n}/polish", status_code=202)
 async def polish_chapter(project_name: str, n: int, request: Request):
     ws = _get_workspace(project_name)
+    repo = _get_repository(project_name)
     mgr = request.app.state.session_manager
 
     pipeline = ReviewPipeline(
         session_manager=mgr, workspace=ws, chapter_num=n, mode="polish"
     )
+    task = repo.create_task(
+        "chapter_polish",
+        chapter_num=n,
+        pipeline_id=pipeline.pipeline_id,
+    )
+
     pipelines: dict[str, Any] = request.app.state.active_pipelines
     pipelines[pipeline.pipeline_id] = pipeline
-    asyncio.create_task(_run_review(pipeline, pipelines))
+    asyncio.create_task(
+        _run_review_with_tracking(pipeline, pipelines, repo, task.id)
+    )
 
-    return {"pipeline_id": pipeline.pipeline_id, "status": "started"}
+    return {"pipeline_id": pipeline.pipeline_id, "task_id": task.id, "status": "started"}
 
 
 outline_router = APIRouter(prefix="/projects/{project_name}/outline", tags=["outline"])
@@ -137,6 +176,7 @@ outline_router = APIRouter(prefix="/projects/{project_name}/outline", tags=["out
 @outline_router.post("/generate", status_code=202)
 async def generate_outline(project_name: str, body: OutlineBody, request: Request):
     ws = _get_workspace(project_name)
+    repo = _get_repository(project_name)
     mgr = request.app.state.session_manager
 
     pipeline = OutlinePipeline(
@@ -145,29 +185,16 @@ async def generate_outline(project_name: str, body: OutlineBody, request: Reques
         synopsis=body.synopsis,
         user_guidance=body.user_guidance,
     )
+    task = repo.create_task(
+        "outline_generate",
+        pipeline_id=pipeline.pipeline_id,
+        metadata={"synopsis": body.synopsis, "user_guidance": body.user_guidance},
+    )
+
     pipelines: dict[str, Any] = request.app.state.active_pipelines
     pipelines[pipeline.pipeline_id] = pipeline
-    asyncio.create_task(_run_outline(pipeline, pipelines))
+    asyncio.create_task(
+        _run_review_with_tracking(pipeline, pipelines, repo, task.id)
+    )
 
-    return {"pipeline_id": pipeline.pipeline_id, "status": "started"}
-
-
-async def _run_pipeline(pipeline: ChapterPipeline, pipelines: dict[str, Any]) -> None:
-    try:
-        await pipeline.run()
-    finally:
-        pipelines.pop(pipeline.pipeline_id, None)
-
-
-async def _run_review(pipeline: ReviewPipeline, pipelines: dict[str, Any]) -> None:
-    try:
-        await pipeline.run()
-    finally:
-        pipelines.pop(pipeline.pipeline_id, None)
-
-
-async def _run_outline(pipeline: OutlinePipeline, pipelines: dict[str, Any]) -> None:
-    try:
-        await pipeline.run()
-    finally:
-        pipelines.pop(pipeline.pipeline_id, None)
+    return {"pipeline_id": pipeline.pipeline_id, "task_id": task.id, "status": "started"}

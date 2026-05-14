@@ -14,11 +14,18 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend import __version__
 from backend.config import get_settings
+from backend.projects.repository import recover_interrupted_tasks
 from backend.runtime.session import SessionManager
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    settings = get_settings()
+    recovered = recover_interrupted_tasks(settings.projects_dir)
+    if recovered:
+        import logging
+        logging.getLogger(__name__).info("Recovered %d interrupted tasks", recovered)
+
     app.state.session_manager = SessionManager()
     app.state.active_pipelines = {}
     yield
@@ -73,6 +80,9 @@ def create_app() -> FastAPI:
 
     from backend.api.prompts import router as prompts_router
     app.include_router(prompts_router)
+
+    from backend.api.tasks import router as tasks_router
+    app.include_router(tasks_router)
 
     return app
 
