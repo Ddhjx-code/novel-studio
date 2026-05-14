@@ -53,6 +53,9 @@ def create_app() -> FastAPI:
     from backend.api.sessions import router as sessions_router
     app.include_router(sessions_router)
 
+    from backend.api.ws import router as ws_router
+    app.include_router(ws_router)
+
     return app
 
 
