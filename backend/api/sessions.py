@@ -23,6 +23,7 @@ class CreateSessionBody(BaseModel):
     api_format: str = ""
     system_prompt: str = ""
     max_turns: int = 8
+    agent_name: str = ""
 
 
 class SubmitBody(BaseModel):
@@ -31,6 +32,14 @@ class SubmitBody(BaseModel):
 
 @router.post("")
 async def create_session(body: CreateSessionBody, request: Request):
+    mgr = _manager(request)
+    if body.agent_name:
+        session = await mgr.create_for_agent(
+            body.agent_name,
+            project_cwd=body.cwd or None,
+        )
+        return {"session_id": session.session_id, "agent_name": body.agent_name}
+
     settings = get_settings()
     config = SessionConfig(
         cwd=body.cwd or str(settings.projects_dir),
@@ -41,7 +50,7 @@ async def create_session(body: CreateSessionBody, request: Request):
         system_prompt=body.system_prompt,
         max_turns=body.max_turns,
     )
-    session = await _manager(request).create(config)
+    session = await mgr.create(config)
     return {"session_id": session.session_id}
 
 

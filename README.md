@@ -13,8 +13,9 @@ AI 小说创作辅助工具 — 浏览器即用，4-Agent 工作流 + RAG 一致
 
 - ✅ Phase 0 — 风险 spike 全过
 - ✅ Phase 1 — 前后端骨架（健康检查打通）
-- ⬜ Phase 2 — Runtime + WebSocket
-- ⬜ Phase 3+ — 后续
+- ✅ Phase 2 — Runtime + WebSocket（端到端验证通过）
+- ✅ Phase 3 — 移植 Agent + Skill 体系（5 Agent + 6 Skill）
+- ⬜ Phase 4+ — 后续
 
 ---
 

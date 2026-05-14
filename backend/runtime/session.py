@@ -26,6 +26,8 @@ class SessionConfig:
     api_format: str = "openai_compat"
     system_prompt: str = ""
     max_turns: int = 8
+    extra_skill_dirs: tuple[str, ...] = ()
+    agent_name: str = ""
 
 
 class NovelSession:
@@ -58,6 +60,7 @@ class NovelSession:
             api_format=cfg.api_format or None,
             system_prompt=cfg.system_prompt or None,
             max_turns=cfg.max_turns,
+            extra_skill_dirs=cfg.extra_skill_dirs or None,
             include_project_memory=False,
         )
         self._bundle.engine._permission_checker._settings.mode = PermissionMode.FULL_AUTO
@@ -129,6 +132,32 @@ class SessionManager:
         await session.start()
         self._sessions[session_id] = session
         return session
+
+    async def create_for_agent(
+        self,
+        agent_name: str,
+        project_cwd: str | None = None,
+    ) -> NovelSession:
+        from backend.config import get_settings
+        from backend.runtime.agents import get_agent
+
+        agent = get_agent(agent_name)
+        if agent is None:
+            raise ValueError(f"Agent not found: {agent_name}")
+
+        settings = get_settings()
+        config = SessionConfig(
+            cwd=project_cwd or str(settings.projects_dir),
+            model=settings.llm_model,
+            api_key=settings.llm_api_key,
+            base_url=settings.llm_base_url,
+            api_format=settings.llm_api_format,
+            system_prompt=agent.system_prompt or "",
+            max_turns=agent.max_turns or 16,
+            extra_skill_dirs=(str(settings.skills_dir),),
+            agent_name=agent_name,
+        )
+        return await self.create(config)
 
     def get(self, session_id: str) -> NovelSession | None:
         return self._sessions.get(session_id)

@@ -48,6 +48,16 @@ class Settings(BaseSettings):
         alias="NOVEL_STUDIO_PROJECTS_DIR",
     )
 
+    # --- Agent / Skill 目录 ---
+    agents_dir: Path = Field(
+        default_factory=lambda: Path(__file__).resolve().parent / "agents",
+        alias="NOVEL_STUDIO_AGENTS_DIR",
+    )
+    skills_dir: Path = Field(
+        default_factory=lambda: Path(__file__).resolve().parent / "skills",
+        alias="NOVEL_STUDIO_SKILLS_DIR",
+    )
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
