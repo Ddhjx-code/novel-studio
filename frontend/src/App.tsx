@@ -5,40 +5,109 @@ import {
   Card,
   ConfigProvider,
   Descriptions,
+  Input,
   Layout,
+  Space,
   Spin,
   Tag,
   Typography,
   theme as antdTheme,
 } from 'antd'
-import { ReloadOutlined } from '@ant-design/icons'
-import { getHealth, type HealthResponse } from './api'
+import {
+  CaretRightOutlined,
+  CloseOutlined,
+  ReloadOutlined,
+  StopOutlined,
+} from '@ant-design/icons'
+import {
+  getHealth,
+  createSession,
+  submitPrompt,
+  cancelSession,
+  deleteSession,
+  type HealthResponse,
+} from './api'
+import { useWebSocket } from './hooks/useWebSocket'
+import StreamConsole from './components/StreamConsole'
 
 const { Header, Content } = Layout
 const { Title, Paragraph } = Typography
+const { TextArea } = Input
 
 function App() {
   const [health, setHealth] = useState<HealthResponse | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [healthError, setHealthError] = useState<string | null>(null)
+  const [healthLoading, setHealthLoading] = useState(false)
+
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [prompt, setPrompt] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [sessionError, setSessionError] = useState<string | null>(null)
+
+  const { events, connected, error: wsError, clearEvents } = useWebSocket(sessionId)
 
   const fetchHealth = async () => {
-    setLoading(true)
-    setError(null)
+    setHealthLoading(true)
+    setHealthError(null)
     try {
-      const data = await getHealth()
-      setHealth(data)
+      setHealth(await getHealth())
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      setHealthError(err instanceof Error ? err.message : String(err))
       setHealth(null)
     } finally {
-      setLoading(false)
+      setHealthLoading(false)
     }
   }
 
   useEffect(() => {
     fetchHealth()
   }, [])
+
+  const handleStartSession = async () => {
+    setSessionError(null)
+    try {
+      const resp = await createSession({})
+      setSessionId(resp.session_id)
+      clearEvents()
+    } catch (err) {
+      setSessionError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  const handleSubmit = async () => {
+    if (!sessionId || !prompt.trim()) return
+    setSubmitting(true)
+    setSessionError(null)
+    try {
+      await submitPrompt(sessionId, prompt.trim())
+      setPrompt('')
+    } catch (err) {
+      setSessionError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleCancel = async () => {
+    if (!sessionId) return
+    try {
+      await cancelSession(sessionId)
+    } catch {
+      /* best effort */
+    }
+  }
+
+  const handleClose = async () => {
+    if (sessionId) {
+      try {
+        await deleteSession(sessionId)
+      } catch {
+        /* best effort */
+      }
+    }
+    setSessionId(null)
+    clearEvents()
+  }
 
   return (
     <ConfigProvider theme={{ algorithm: antdTheme.defaultAlgorithm }}>
@@ -48,32 +117,27 @@ function App() {
             Novel Studio
           </Title>
           <Tag color="blue" style={{ marginLeft: 12 }}>
-            Phase 1 骨架
+            Phase 2 Runtime + WS
           </Tag>
         </Header>
-        <Content style={{ padding: 32, maxWidth: 880, margin: '0 auto', width: '100%' }}>
+        <Content style={{ padding: 32, maxWidth: 960, margin: '0 auto', width: '100%' }}>
+          {/* Health Check */}
           <Card
             title="后端健康检查"
             extra={
               <Button
                 icon={<ReloadOutlined />}
                 onClick={fetchHealth}
-                loading={loading}
+                loading={healthLoading}
                 size="small"
               >
                 重新检查
               </Button>
             }
           >
-            {loading && <Spin />}
-            {error && (
-              <Alert
-                type="error"
-                message="无法连接后端"
-                description={error}
-                showIcon
-                style={{ marginBottom: 16 }}
-              />
+            {healthLoading && <Spin />}
+            {healthError && (
+              <Alert type="error" message="无法连接后端" description={healthError} showIcon />
             )}
             {health && (
               <Descriptions column={1} bordered size="small">
@@ -91,11 +155,83 @@ function App() {
             )}
           </Card>
 
-          <Card title="后续阶段" style={{ marginTop: 24 }} size="small">
-            <Paragraph type="secondary" style={{ margin: 0 }}>
-              Phase 2: Runtime + WebSocket · Phase 3: 移植 4-Agent · Phase 4: 单章流水线 ·
-              Phase 5: RAG · Phase 6a: 工作台 UI
-            </Paragraph>
+          {/* Test Agent */}
+          <Card
+            title="Test Agent"
+            style={{ marginTop: 24 }}
+            extra={
+              sessionId ? (
+                <Space>
+                  <Tag color={connected ? 'green' : 'orange'}>
+                    {connected ? 'WS Connected' : 'WS Connecting...'}
+                  </Tag>
+                  <Button icon={<CloseOutlined />} size="small" onClick={handleClose} danger>
+                    Close Session
+                  </Button>
+                </Space>
+              ) : (
+                <Button type="primary" size="small" onClick={handleStartSession}>
+                  Start Session
+                </Button>
+              )
+            }
+          >
+            {sessionError && (
+              <Alert
+                type="error"
+                message={sessionError}
+                showIcon
+                closable
+                style={{ marginBottom: 12 }}
+              />
+            )}
+            {wsError && (
+              <Alert
+                type="warning"
+                message={wsError}
+                showIcon
+                closable
+                style={{ marginBottom: 12 }}
+              />
+            )}
+
+            {!sessionId ? (
+              <Paragraph type="secondary">
+                点击 Start Session 创建一个 Agent 会话，然后发送提示词测试 OpenHarness 集成。
+              </Paragraph>
+            ) : (
+              <>
+                <Space.Compact style={{ width: '100%', marginBottom: 12 }}>
+                  <TextArea
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    placeholder="输入提示词..."
+                    autoSize={{ minRows: 1, maxRows: 4 }}
+                    onPressEnter={(e) => {
+                      if (!e.shiftKey) {
+                        e.preventDefault()
+                        handleSubmit()
+                      }
+                    }}
+                    disabled={!connected}
+                    style={{ flex: 1 }}
+                  />
+                  <Button
+                    type="primary"
+                    icon={<CaretRightOutlined />}
+                    onClick={handleSubmit}
+                    loading={submitting}
+                    disabled={!connected || !prompt.trim()}
+                  >
+                    Send
+                  </Button>
+                  <Button icon={<StopOutlined />} onClick={handleCancel} disabled={!connected}>
+                    Cancel
+                  </Button>
+                </Space.Compact>
+                <StreamConsole events={events} connected={connected} />
+              </>
+            )}
           </Card>
         </Content>
       </Layout>
