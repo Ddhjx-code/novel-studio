@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import { Layout, Menu, Typography } from 'antd'
 import {
   BookOutlined,
+  CodeOutlined,
   DashboardOutlined,
   EditOutlined,
   ProjectOutlined,
+  ReadOutlined,
   SettingOutlined,
 } from '@ant-design/icons'
 import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
@@ -29,6 +31,8 @@ export default function AppLayout() {
   const selectedKey = (() => {
     if (location.pathname.startsWith('/workbench')) return 'workbench'
     if (location.pathname.startsWith('/chapters')) return 'chapters'
+    if (location.pathname.startsWith('/bible')) return 'bible'
+    if (location.pathname.startsWith('/prompts')) return 'prompts'
     if (location.pathname.startsWith('/settings')) return 'settings'
     return 'projects'
   })()
@@ -47,6 +51,18 @@ export default function AppLayout() {
       label: '章节编辑',
       disabled: !currentProject,
     },
+    {
+      key: 'bible',
+      icon: <ReadOutlined />,
+      label: '圣经编辑',
+      disabled: !currentProject,
+    },
+    {
+      key: 'prompts',
+      icon: <CodeOutlined />,
+      label: '提示词工坊',
+      disabled: !currentProject,
+    },
     { key: 'settings', icon: <SettingOutlined />, label: '设置' },
   ]
 
@@ -60,6 +76,12 @@ export default function AppLayout() {
         break
       case 'chapters':
         if (currentProject) navigate(`/chapters/${currentProject}`)
+        break
+      case 'bible':
+        if (currentProject) navigate(`/bible/${currentProject}`)
+        break
+      case 'prompts':
+        if (currentProject) navigate(`/prompts/${currentProject}`)
         break
       case 'settings':
         navigate('/settings')

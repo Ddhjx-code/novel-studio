@@ -37,3 +37,37 @@ export interface ReloadAgentsResponse {
   reloaded: number
   names: string[]
 }
+
+// --- Bible ---
+
+export interface BibleTreeResponse {
+  files: string[]
+}
+
+export interface BibleFileContent {
+  path: string
+  content: string
+}
+
+// --- Prompts ---
+
+export interface PromptAgentEntry {
+  name: string
+  description: string
+  path: string
+}
+
+export interface PromptAgentDetail {
+  name: string
+  content: string
+}
+
+export interface PromptSkillEntry {
+  name: string
+  files: string[]
+}
+
+export interface PromptSkillFile {
+  path: string
+  content: string
+}

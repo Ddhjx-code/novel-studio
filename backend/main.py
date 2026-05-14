@@ -68,6 +68,12 @@ def create_app() -> FastAPI:
     app.include_router(chapters_router)
     app.include_router(outline_router)
 
+    from backend.api.bible import router as bible_router
+    app.include_router(bible_router)
+
+    from backend.api.prompts import router as prompts_router
+    app.include_router(prompts_router)
+
     return app
 
 

@@ -1,10 +1,14 @@
 import axios from 'axios'
 import type {
   AgentListResponse,
+  BibleFileContent,
+  BibleTreeResponse,
   ChapterContent,
   PipelineResponse,
   Project,
   ProjectListResponse,
+  PromptAgentDetail,
+  PromptSkillFile,
   ReloadAgentsResponse,
 } from './types'
 
@@ -142,4 +146,57 @@ export async function listAgents(): Promise<AgentListResponse> {
 export async function reloadAgents(): Promise<ReloadAgentsResponse> {
   const resp = await api.post<ReloadAgentsResponse>('/agents/reload')
   return resp.data
+}
+
+// --- Bible API ---
+
+export async function getBibleTree(project: string): Promise<BibleTreeResponse> {
+  const resp = await api.get<BibleTreeResponse>(`/projects/${project}/bible/tree`)
+  return resp.data
+}
+
+export async function readBibleFile(project: string, path: string): Promise<BibleFileContent> {
+  const filePath = path.startsWith('bible/') ? path.slice(6) : path
+  const resp = await api.get<BibleFileContent>(`/projects/${project}/bible/${filePath}`)
+  return resp.data
+}
+
+export async function saveBibleFile(project: string, path: string, content: string): Promise<void> {
+  const filePath = path.startsWith('bible/') ? path.slice(6) : path
+  await api.put(`/projects/${project}/bible/${filePath}`, { content })
+}
+
+export async function deleteBibleFile(project: string, path: string): Promise<void> {
+  const filePath = path.startsWith('bible/') ? path.slice(6) : path
+  await api.delete(`/projects/${project}/bible/${filePath}`)
+}
+
+// --- Prompts API ---
+
+export async function listPromptAgents(): Promise<{ agents: { name: string; description: string; path: string }[] }> {
+  const resp = await api.get<{ agents: { name: string; description: string; path: string }[] }>('/prompts/agents')
+  return resp.data
+}
+
+export async function getPromptAgent(name: string): Promise<PromptAgentDetail> {
+  const resp = await api.get<PromptAgentDetail>(`/prompts/agents/${name}`)
+  return resp.data
+}
+
+export async function savePromptAgent(name: string, content: string): Promise<void> {
+  await api.put(`/prompts/agents/${name}`, { content })
+}
+
+export async function listPromptSkills(): Promise<{ skills: { name: string; files: string[] }[] }> {
+  const resp = await api.get<{ skills: { name: string; files: string[] }[] }>('/prompts/skills')
+  return resp.data
+}
+
+export async function getPromptSkillFile(skill: string, filePath: string): Promise<PromptSkillFile> {
+  const resp = await api.get<PromptSkillFile>(`/prompts/skills/${skill}/${filePath}`)
+  return resp.data
+}
+
+export async function savePromptSkillFile(skill: string, filePath: string, content: string): Promise<void> {
+  await api.put(`/prompts/skills/${skill}/${filePath}`, { content })
 }

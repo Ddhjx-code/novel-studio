@@ -68,6 +68,25 @@ class ProjectWorkspace:
         with journal_path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
+    def list_files(self, subdir: str) -> list[str]:
+        """Recursively list all files under a subdirectory, returning relative paths."""
+        base = self._validate_path(subdir)
+        if not base.is_dir():
+            return []
+        results: list[str] = []
+        for p in sorted(base.rglob("*")):
+            if p.is_file():
+                results.append(str(p.relative_to(self._root)))
+        return results
+
+    def delete_file(self, relative_path: str) -> bool:
+        """Delete a file. Returns True if file existed and was removed."""
+        path = self._validate_path(relative_path)
+        if not path.is_file():
+            return False
+        path.unlink()
+        return True
+
     def list_chapters(self) -> list[int]:
         """Return sorted list of existing chapter numbers."""
         chapters_dir = self._root / "chapters"
