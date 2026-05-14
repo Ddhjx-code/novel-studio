@@ -55,10 +55,9 @@ projects/
 *.index
 .cache/
 
-# Spike 实验输出
+# Spike 实验运行时输出（脚本和 findings 文档要提交）
 spikes/output/
 spikes/*.log
-docs/spike-findings.md
 
 # 本地敏感配置
 config.local.json
