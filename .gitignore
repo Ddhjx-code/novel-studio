@@ -1,0 +1,67 @@
+# 参考项目 - 仅供学习，不纳入版本管理
+OpenHarness/
+writeAgent/
+AI_NovelGenerator/
+
+# Claude / IDE 本地配置
+.claude/
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+.env
+.env.local
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+dist/
+build/
+*.egg
+
+# Node / 前端
+node_modules/
+frontend/dist/
+frontend/build/
+.next/
+.vite/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 用户运行时数据 - 不进版本库
+projects/
+~/.novel-studio/
+
+# 向量索引 / 本地缓存
+*.faiss
+*.index
+.cache/
+
+# Spike 实验输出
+spikes/output/
+spikes/*.log
+docs/spike-findings.md
+
+# 本地敏感配置
+config.local.json
+secrets.json
+*.pem
+*.key
