@@ -42,6 +42,12 @@ class Settings(BaseSettings):
     llm_model: str = Field(default="", alias="LLM_MODEL")
     llm_api_key: str = Field(default="", alias="LLM_API_KEY")
 
+    # --- Embedding ---
+    embedding_api_format: str = Field(default="", alias="EMBEDDING_API_FORMAT")
+    embedding_base_url: str = Field(default="", alias="EMBEDDING_BASE_URL")
+    embedding_model: str = Field(default="", alias="EMBEDDING_MODEL")
+    embedding_api_key: str = Field(default="", alias="EMBEDDING_API_KEY")
+
     # --- 项目数据根目录 ---
     projects_dir: Path = Field(
         default_factory=lambda: REPO_ROOT / "projects",

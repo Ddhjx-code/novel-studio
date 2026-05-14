@@ -20,6 +20,7 @@ from backend.runtime.session import SessionManager
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.session_manager = SessionManager()
+    app.state.active_pipelines = {}
     yield
     await app.state.session_manager.close_all()
 
@@ -58,6 +59,14 @@ def create_app() -> FastAPI:
 
     from backend.api.ws import router as ws_router
     app.include_router(ws_router)
+
+    from backend.api.projects import router as projects_router
+    app.include_router(projects_router)
+
+    from backend.api.chapters import router as chapters_router
+    from backend.api.chapters import outline_router
+    app.include_router(chapters_router)
+    app.include_router(outline_router)
 
     return app
 

@@ -47,7 +47,9 @@ yarn-error.log*
 pnpm-debug.log*
 
 # 用户运行时数据 - 不进版本库
-projects/
+/projects/
+!backend/projects/
+!backend/tests/projects/
 ~/.novel-studio/
 
 # 向量索引 / 本地缓存
