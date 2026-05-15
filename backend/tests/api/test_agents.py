@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.main import app
+from backend.main import api_app
 from backend.runtime.agents import _load_all
 
 
@@ -51,7 +51,7 @@ def client(five_agents):
     with patch("backend.runtime.agents.load_agents_dir", return_value=five_agents):
         _load_all.cache_clear()
         _load_all()
-        yield TestClient(app)
+        yield TestClient(api_app)
 
 
 class TestAgentsListEndpoint:
@@ -95,7 +95,7 @@ class TestAgentDetailEndpoint:
 class TestReloadEndpoint:
     def test_reload_returns_count(self, five_agents):
         with patch("backend.runtime.agents.load_agents_dir", return_value=five_agents):
-            client = TestClient(app)
+            client = TestClient(api_app)
             resp = client.post("/agents/reload")
             assert resp.status_code == 200
             data = resp.json()

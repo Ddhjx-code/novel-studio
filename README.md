@@ -1,129 +1,136 @@
-# Novel Studio
+<p align="center">
+  <h1 align="center">Novel Studio</h1>
+  <p align="center">
+    AI-powered novel writing assistant — browser-based, multi-agent workflow + RAG consistency.
+  </p>
+  <p align="center">
+    <a href="./README.zh-CN.md">简体中文</a> | English
+  </p>
+</p>
 
-AI 小说创作辅助工具 — 浏览器即用，4-Agent 工作流 + RAG 一致性。
-
-> **定位**：辅助人类作者完成小说创作的工作台，**不是**全自动写作机器。
-> 核心能力是「一键生成大纲」「一键生成单章」「一键审查/润色」，每个能力可独立调用，人类全程主导节奏与创意。
-
-详细规划见 [`plan.md`](./plan.md)。Phase 0 风险验证发现见 [`docs/spike-findings.md`](./docs/spike-findings.md)。
+<p align="center">
+  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-%3E%3D3.10-blue?logo=python&logoColor=white" alt="Python"></a>
+  <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/node-%3E%3D20-green?logo=node.js&logoColor=white" alt="Node.js"></a>
+  <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/FastAPI-0.110+-009688?logo=fastapi&logoColor=white" alt="FastAPI"></a>
+  <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white" alt="React"></a>
+  <a href="https://github.com/Ddhjx-code/novel-studio/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-yellow" alt="License"></a>
+</p>
 
 ---
 
-## 当前阶段
+> An author's workbench that **assists** with novel creation, **not** an auto-writer.
+> The author controls pace and creativity throughout.
 
-- ✅ Phase 0 — 风险 spike 全过
-- ✅ Phase 1 — 前后端骨架（健康检查打通）
-- ✅ Phase 2 — Runtime + WebSocket（端到端验证通过）
-- ✅ Phase 3 — 移植 Agent + Skill 体系（5 Agent + 6 Skill）
-- ⬜ Phase 4+ — 后续
+## Features
 
----
+- **Outline Generation** — provide a synopsis, get a structured chapter outline
+- **Chapter Generation** — 4-step pipeline (blueprint, draft, continuity check, finalize) powered by specialized agents
+- **Review & Polish** — automated review with actionable feedback, or stylistic polish pass
+- **Bible (Settings Collection)** — character profiles, worldbuilding, plot notes with RAG-powered consistency checking
+- **Prompt Studio** — edit agent system prompts and skill files directly in the browser
+- **Task History** — persistent task tracking with retry support
+- **LLM Settings** — configure LLM provider and model from the UI
 
-## 快速开始
+## Quick Start
 
-### 0. 前置依赖
-
-- Python ≥ 3.10
-- Node.js ≥ 20
-- 已 clone 三个参考项目到本仓库根目录：`OpenHarness/`、`writeAgent/`、`AI_NovelGenerator/`（这些目录被 `.gitignore` 排除，不入版本库）
-
-### 1. 配置 LLM 凭据
-
-复制 `.env.example` 为 `.env.local`，填入你的 API key：
+### Option A: Docker (recommended)
 
 ```bash
 cp .env.example .env.local
-# 用编辑器修改 .env.local
+# Edit .env.local — fill in your LLM API key
+
+docker compose up --build
+# Open http://localhost:8080
 ```
 
-`.env.local` 已被 `.gitignore` 排除，**永远不会进入 git**。
-
-默认配置走 [zenmux](https://zenmux.ai/) 的 OpenAI 兼容协议（`https://zenmux.ai/api/v1`）+ `deepseek/deepseek-v4-pro` 模型。要换别的 provider，参考 `.env.example` 注释。
-
-### 2. 装后端
+### Option B: Setup Script
 
 ```bash
+./setup.sh
+# Edit .env.local — fill in your LLM API key
+
+.venv/bin/uvicorn backend.main:app --host 0.0.0.0 --port 8080
+# Open http://localhost:8080
+```
+
+### Option C: Manual
+
+```bash
+# Backend
 python3 -m venv .venv
-.venv/bin/pip install -e ./OpenHarness
 .venv/bin/pip install -e .
+
+# Frontend
+cd frontend && npm install && npm run build && cd ..
+
+# Config
+cp .env.example .env.local
+# Edit .env.local
+
+# Run (single port, production mode)
+.venv/bin/uvicorn backend.main:app --host 0.0.0.0 --port 8080
 ```
 
-### 3. 装前端
+### Development Mode
 
 ```bash
-cd frontend && npm install && cd ..
-```
+# Terminal A — backend (auto-reload)
+.venv/bin/uvicorn backend.main:app --reload --port 8080
 
-### 4. 启动
-
-两个终端：
-
-**终端 A — 后端**：
-```bash
-.venv/bin/uvicorn backend.main:app --reload --host 127.0.0.1 --port 8080
-```
-
-**终端 B — 前端**：
-```bash
+# Terminal B — frontend (Vite dev server with HMR)
 cd frontend && npm run dev
+# Open http://localhost:5173
 ```
 
-浏览器访问 [http://localhost:5173](http://localhost:5173)，应该能看到「后端健康检查」卡片，状态绿色 `ok`，且 LLM 已配置。
+## LLM Configuration
 
----
+Edit `.env.local` or use the **Settings** page in the UI:
 
-## 项目结构
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `LLM_API_FORMAT` | `openai_compat` or `ollama` | `openai_compat` |
+| `LLM_BASE_URL` | API endpoint | `https://api.openai.com/v1` |
+| `LLM_MODEL` | Model name | `gpt-4o` |
+| `LLM_API_KEY` | API key | `sk-...` |
+
+Embedding config is optional — falls back to the LLM config if left empty.
+
+## Project Structure
 
 ```
 novel-studio/
-├── plan.md                # 完整实现计划（Phase 0-8）
-├── pyproject.toml         # 后端依赖声明
-├── .env.example           # LLM 配置模板（复制为 .env.local）
-├── docs/
-│   └── spike-findings.md  # Phase 0 风险验证报告
-├── spikes/                # Phase 0 验证脚本（保留作回归测试用）
-│   ├── _common.py
-│   ├── 01_runtime.py
-│   ├── 02_concurrency.py
-│   ├── 03_subagent.py
-│   └── 04_providers.py
 ├── backend/
-│   ├── __init__.py
-│   ├── main.py            # FastAPI 入口
-│   └── config.py          # Settings（从 .env.local 读）
+│   ├── main.py              # FastAPI entry (API sub-app + static files)
+│   ├── config.py             # Settings from .env.local
+│   ├── api/                  # REST + WebSocket endpoints
+│   ├── agents/               # Agent definition files (.md)
+│   ├── skills/               # Skill definition files
+│   ├── orchestrator/         # Pipeline logic (chapter, outline, review)
+│   ├── projects/             # Workspace + persistence layer
+│   ├── runtime/              # Session + agent management
+│   ├── tools/                # Custom pipeline tools
+│   └── vectorstore/          # Embedding + FAISS integration
 ├── frontend/
 │   ├── src/
-│   │   ├── App.tsx        # 当前：健康检查 demo
-│   │   ├── api.ts         # axios 包装
-│   │   └── main.tsx
-│   ├── vite.config.ts     # /api 代理到 :8080，/ws 代理 WebSocket
-│   └── package.json
-├── projects/              # 用户运行时数据（已 gitignored）
-├── OpenHarness/           # 参考项目（已 gitignored）
-├── writeAgent/            # 参考项目（已 gitignored）
-└── AI_NovelGenerator/     # 参考项目（已 gitignored）
+│   │   ├── pages/            # Workbench, Bible, PromptStudio, Settings
+│   │   ├── components/       # Shared UI components
+│   │   ├── hooks/            # WebSocket, custom hooks
+│   │   └── api.ts            # Backend API client
+│   └── vite.config.ts        # Dev proxy config
+├── pyproject.toml            # Python dependencies
+├── setup.sh                  # One-click setup script
+├── Dockerfile                # Multi-stage build
+├── docker-compose.yml        # Docker Compose config
+└── .env.example              # LLM config template
 ```
 
----
-
-## 跑 Phase 0 spike（回归测试）
+## Running Tests
 
 ```bash
-.venv/bin/python spikes/01_runtime.py    # 嵌入式 runtime
-.venv/bin/python spikes/02_concurrency.py # 多 session 并发
-.venv/bin/python spikes/03_subagent.py    # subagent 派遣
-.venv/bin/python spikes/04_providers.py   # provider 适配
+.venv/bin/pip install -e ".[dev]"
+.venv/bin/pytest backend/tests/ -q
 ```
-
-切到 Anthropic 协议跑：
-
-```bash
-LLM_API_FORMAT=anthropic LLM_BASE_URL=https://zenmux.ai/api/anthropic \
-  .venv/bin/python spikes/01_runtime.py
-```
-
----
 
 ## License
 
-MIT
+[MIT](LICENSE)

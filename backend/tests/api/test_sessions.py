@@ -36,9 +36,10 @@ def mock_manager(mock_session) -> SessionManager:
 
 @pytest.fixture
 async def client(mock_manager):
-    app = create_app()
-    app.state.session_manager = mock_manager
-    transport = ASGITransport(app=app)
+    root_app = create_app()
+    api = root_app.state._api
+    api.state.session_manager = mock_manager
+    transport = ASGITransport(app=api)
     async with AsyncClient(transport=transport, base_url="http://test") as c:
         yield c
 

@@ -8,7 +8,7 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.main import app
+from backend.main import api_app
 from backend.projects.workspace import ensure_project
 
 
@@ -28,7 +28,7 @@ def tmp_projects_dir(tmp_path: Path):
 def client(tmp_projects_dir):
     with patch("backend.api.bible.get_settings") as mock_settings:
         mock_settings.return_value.projects_dir = tmp_projects_dir
-        yield TestClient(app)
+        yield TestClient(api_app)
 
 
 class TestBibleTree:

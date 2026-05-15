@@ -8,7 +8,7 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.main import app
+from backend.main import api_app
 
 
 @pytest.fixture
@@ -43,7 +43,7 @@ def client(tmp_agents_dir, tmp_skills_dir):
         mock_settings.return_value.agents_dir = tmp_agents_dir
         mock_settings.return_value.skills_dir = tmp_skills_dir
         with patch("backend.api.prompts.reload_agents"):
-            yield TestClient(app)
+            yield TestClient(api_app)
 
 
 class TestListAgents:

@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.main import app
+from backend.main import api_app
 from backend.projects.workspace import ensure_project
 
 
@@ -33,7 +33,7 @@ def client(tmp_projects_dir):
         mock_settings.return_value.embedding_base_url = ""
         mock_settings.return_value.embedding_model = ""
         mock_settings.return_value.embedding_api_key = ""
-        yield TestClient(app)
+        yield TestClient(api_app)
 
 
 class TestReadChapter:
@@ -69,9 +69,9 @@ class TestSaveChapter:
 
 class TestGenerateChapter:
     def test_returns_pipeline_id(self, client):
-        app.state.session_manager = MagicMock()
-        app.state.session_manager.create_for_agent = AsyncMock()
-        app.state.active_pipelines = {}
+        api_app.state.session_manager = MagicMock()
+        api_app.state.session_manager.create_for_agent = AsyncMock()
+        api_app.state.active_pipelines = {}
 
         resp = client.post(
             "/projects/test-novel/chapters/1/generate",
@@ -84,9 +84,9 @@ class TestGenerateChapter:
         assert data["status"] == "started"
 
     def test_with_specific_steps(self, client):
-        app.state.session_manager = MagicMock()
-        app.state.session_manager.create_for_agent = AsyncMock()
-        app.state.active_pipelines = {}
+        api_app.state.session_manager = MagicMock()
+        api_app.state.session_manager.create_for_agent = AsyncMock()
+        api_app.state.active_pipelines = {}
 
         resp = client.post(
             "/projects/test-novel/chapters/1/generate",
@@ -98,9 +98,9 @@ class TestGenerateChapter:
 
 class TestReviewPolish:
     def test_review_returns_pipeline_id(self, client):
-        app.state.session_manager = MagicMock()
-        app.state.session_manager.create_for_agent = AsyncMock()
-        app.state.active_pipelines = {}
+        api_app.state.session_manager = MagicMock()
+        api_app.state.session_manager.create_for_agent = AsyncMock()
+        api_app.state.active_pipelines = {}
 
         resp = client.post("/projects/test-novel/chapters/1/review")
 
@@ -108,9 +108,9 @@ class TestReviewPolish:
         assert "pipeline_id" in resp.json()
 
     def test_polish_returns_pipeline_id(self, client):
-        app.state.session_manager = MagicMock()
-        app.state.session_manager.create_for_agent = AsyncMock()
-        app.state.active_pipelines = {}
+        api_app.state.session_manager = MagicMock()
+        api_app.state.session_manager.create_for_agent = AsyncMock()
+        api_app.state.active_pipelines = {}
 
         resp = client.post("/projects/test-novel/chapters/1/polish")
 

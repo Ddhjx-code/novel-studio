@@ -27,7 +27,7 @@ export function useWebSocket(sessionId: string | null): UseWebSocketResult {
     }
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const url = `${protocol}//${window.location.host}/ws/sessions/${sessionId}`
+    const url = `${protocol}//${window.location.host}/api/ws/sessions/${sessionId}`
     const ws = new WebSocket(url)
     wsRef.current = ws
 

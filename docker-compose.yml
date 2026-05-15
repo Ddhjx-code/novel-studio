@@ -1,0 +1,8 @@
+services:
+  novel-studio:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./projects:/app/projects
+      - ./.env.local:/app/.env.local

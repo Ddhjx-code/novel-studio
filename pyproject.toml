@@ -27,9 +27,7 @@ dependencies = [
     # 向量检索
     "faiss-cpu>=1.7.4",
     "numpy>=1.24",
-    # OpenHarness 通过 ./OpenHarness 本地 editable 安装：
-    #   pip install -e ./OpenHarness
-    # 暂不在此处声明，避免锁定到 PyPI 版本
+    "openharness-ai>=0.1.9",
 ]
 
 [project.optional-dependencies]
