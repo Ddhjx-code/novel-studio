@@ -157,7 +157,7 @@ class ReviewPipeline:
         parts: list[str] = []
         while True:
             try:
-                event = await asyncio.wait_for(queue.get(), timeout=300.0)
+                event = await asyncio.wait_for(queue.get(), timeout=600.0)
             except asyncio.TimeoutError:
                 raise TimeoutError(f"{self._mode} timed out")
 

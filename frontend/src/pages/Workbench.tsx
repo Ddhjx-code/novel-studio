@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   Button,
   Card,
   Col,
   Descriptions,
+  Divider,
   Input,
   InputNumber,
   Row,
@@ -13,15 +14,18 @@ import {
   message,
 } from 'antd'
 import {
+  CommentOutlined,
   FileTextOutlined,
+  HighlightOutlined,
   PlayCircleOutlined,
   SearchOutlined,
-  HighlightOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons'
 import { useParams } from 'react-router-dom'
 import { useProject } from '../context/ProjectContext'
 import { usePipeline } from '../hooks/usePipeline'
 import { generateChapter, generateOutline, polishChapter, reviewChapter } from '../api'
+import ChatPanel from '../components/ChatPanel'
 import TaskHistory from '../components/TaskHistory'
 
 const { TextArea } = Input
@@ -34,10 +38,17 @@ export default function Workbench() {
   const [chapterNum, setChapterNum] = useState(1)
   const [synopsis, setSynopsis] = useState('')
   const [guidance, setGuidance] = useState('')
+  const [chatOpen, setChatOpen] = useState(false)
+  const [chatAgent, setChatAgent] = useState<string | null>(null)
 
   useEffect(() => {
     if (project) setCurrentProject(project)
   }, [project, setCurrentProject])
+
+  const handleOpenChat = useCallback((agentName: string) => {
+    setChatAgent(agentName)
+    setChatOpen(true)
+  }, [])
 
   const handleGenerateOutline = async () => {
     if (!project || !synopsis.trim()) {
@@ -49,10 +60,22 @@ export default function Workbench() {
     refreshProject()
   }
 
-  const handleGenerateChapter = async () => {
+  const handleGeneratePlan = async () => {
+    if (!project) return
+    const resp = await trigger(() => generateChapter(project, chapterNum, ['A', 'B']))
+    message.success(`第 ${chapterNum} 章规划已启动: ${resp.pipeline_id.slice(0, 8)}...`)
+  }
+
+  const handleGenerateWrite = async () => {
+    if (!project) return
+    const resp = await trigger(() => generateChapter(project, chapterNum, ['C', 'D', 'E', 'F']))
+    message.success(`第 ${chapterNum} 章写作已启动: ${resp.pipeline_id.slice(0, 8)}...`)
+  }
+
+  const handleGenerateFull = async () => {
     if (!project) return
     const resp = await trigger(() => generateChapter(project, chapterNum))
-    message.success(`第 ${chapterNum} 章生成已启动: ${resp.pipeline_id.slice(0, 8)}...`)
+    message.success(`第 ${chapterNum} 章完整生成已启动: ${resp.pipeline_id.slice(0, 8)}...`)
   }
 
   const handleReview = async () => {
@@ -113,15 +136,24 @@ export default function Workbench() {
                 value={guidance}
                 onChange={(e) => setGuidance(e.target.value)}
               />
-              <Button
-                type="primary"
-                icon={<PlayCircleOutlined />}
-                onClick={handleGenerateOutline}
-                loading={pipelineLoading}
-                disabled={!synopsis.trim()}
-              >
-                生成大纲
-              </Button>
+              <Space wrap>
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  onClick={handleGenerateOutline}
+                  loading={pipelineLoading}
+                  disabled={!synopsis.trim()}
+                >
+                  生成大纲
+                </Button>
+                <Button
+                  icon={<CommentOutlined />}
+                  onClick={() => handleOpenChat('planner')}
+                  disabled={!projectDetail.has_outline}
+                >
+                  讨论大纲
+                </Button>
+              </Space>
             </Space>
           </Card>
         </Col>
@@ -136,14 +168,45 @@ export default function Workbench() {
                 <Typography.Text>章节号：</Typography.Text>
                 <InputNumber min={1} value={chapterNum} onChange={(v) => setChapterNum(v ?? 1)} />
               </Space>
+
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                分步生成：先生成规划 → 讨论确认 → 再开始写作
+              </Typography.Text>
+
               <Space wrap>
                 <Button
                   type="primary"
-                  icon={<PlayCircleOutlined />}
-                  onClick={handleGenerateChapter}
+                  icon={<FileTextOutlined />}
+                  onClick={handleGeneratePlan}
                   loading={pipelineLoading}
                 >
-                  生成章节
+                  生成规划
+                </Button>
+                <Button
+                  icon={<CommentOutlined />}
+                  onClick={() => handleOpenChat('planner')}
+                >
+                  讨论规划
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  onClick={handleGenerateWrite}
+                  loading={pipelineLoading}
+                >
+                  开始写作
+                </Button>
+              </Space>
+
+              <Divider style={{ margin: '8px 0' }} />
+
+              <Space wrap>
+                <Button
+                  icon={<ThunderboltOutlined />}
+                  onClick={handleGenerateFull}
+                  loading={pipelineLoading}
+                >
+                  完整生成
                 </Button>
                 <Button
                   icon={<SearchOutlined />}
@@ -170,6 +233,14 @@ export default function Workbench() {
           <TaskHistory project={project} />
         </Card>
       )}
+
+      <ChatPanel
+        open={chatOpen}
+        agentName={chatAgent}
+        project={project ?? ''}
+        chapterNum={chapterNum}
+        onClose={() => setChatOpen(false)}
+      />
     </Space>
   )
 }

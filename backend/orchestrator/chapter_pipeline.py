@@ -233,7 +233,7 @@ class ChapterPipeline:
 
         while True:
             try:
-                event = await asyncio.wait_for(queue.get(), timeout=300.0)
+                event = await asyncio.wait_for(queue.get(), timeout=600.0)
             except asyncio.TimeoutError:
                 raise TimeoutError(f"Step {step.value} timed out waiting for agent response")
 
