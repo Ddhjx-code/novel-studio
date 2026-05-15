@@ -68,12 +68,14 @@ export default function ReviewPanel({ project, chapterNum, onOpenChat }: ReviewP
 
   const pipelineList = Array.from(activePipelines.entries())
 
+  const contentHeight = 'calc(100vh - 128px - 40px - 46px - 16px)'
+
   const tabItems = [
     {
       key: 'plan',
       label: '规划',
       children: (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: contentHeight }}>
           <Space style={{ marginBottom: 8 }}>
             <Button
               icon={<ReloadOutlined />}
@@ -107,7 +109,7 @@ export default function ReviewPanel({ project, chapterNum, onOpenChat }: ReviewP
       key: 'review',
       label: '审查',
       children: (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: contentHeight }}>
           <Space style={{ marginBottom: 8 }}>
             <Button
               icon={<SearchOutlined />}
@@ -196,7 +198,8 @@ export default function ReviewPanel({ project, chapterNum, onOpenChat }: ReviewP
         <Tabs
           items={tabItems}
           size="small"
-          style={{ flex: 1, minHeight: 0 }}
+          style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
+          className="review-panel-tabs"
         />
       )}
     </div>

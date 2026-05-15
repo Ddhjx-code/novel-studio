@@ -72,13 +72,15 @@ export default function Chapters() {
   const writtenSet = new Set(chapters)
 
   const handleSelectChapter = useCallback((n: number) => {
-    if (writtenSet.has(n)) {
+    if (!project) return
+    const hasChapter = (projectDetail?.chapters ?? []).includes(n)
+    if (hasChapter) {
       loadChapter(n)
     } else {
       setSelectedChapter(n)
       setContent('')
     }
-  }, [writtenSet, loadChapter])
+  }, [project, projectDetail?.chapters, loadChapter])
 
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 128px)', gap: 0 }}>
@@ -99,7 +101,7 @@ export default function Chapters() {
             {selectedChapter ? `第 ${selectedChapter} 章` : '请选择章节'}
           </Typography.Text>
           {selectedChapter && !writtenSet.has(selectedChapter) && (
-            <Typography.Text type="warning" style={{ fontSize: 12 }}>
+            <Typography.Text type="secondary" style={{ fontSize: 12, color: '#fa8c16' }}>
               规划中 — 尚未生成正文
             </Typography.Text>
           )}
