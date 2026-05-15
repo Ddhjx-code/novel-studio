@@ -1,4 +1,4 @@
-import { Menu, Typography } from 'antd'
+import { Menu } from 'antd'
 import { CodeOutlined, FileTextOutlined, FolderOutlined } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 
@@ -30,14 +30,7 @@ export default function PromptList({
   const agentItems: MenuProps['items'] = agents.map((a) => ({
     key: `agent:${a.name}`,
     icon: <CodeOutlined />,
-    label: (
-      <span>
-        {a.name}
-        <Typography.Text type="secondary" style={{ fontSize: 11, display: 'block' }}>
-          {a.description.slice(0, 30)}
-        </Typography.Text>
-      </span>
-    ),
+    label: a.name,
   }))
 
   const skillItems: MenuProps['items'] = skills.map((s) => ({

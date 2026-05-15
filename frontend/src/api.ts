@@ -26,6 +26,26 @@ export interface HealthResponse {
   llm_model: string
 }
 
+export interface LLMSettings {
+  llm_api_format: string
+  llm_base_url: string
+  llm_model: string
+  llm_api_key: string
+  embedding_api_format: string
+  embedding_base_url: string
+  embedding_model: string
+  embedding_api_key: string
+}
+
+export async function getLLMSettings(): Promise<LLMSettings> {
+  const resp = await api.get<LLMSettings>('/settings')
+  return resp.data
+}
+
+export async function saveLLMSettings(body: Partial<LLMSettings>): Promise<void> {
+  await api.put('/settings', body)
+}
+
 export async function getHealth(): Promise<HealthResponse> {
   const res = await api.get<HealthResponse>('/health')
   return res.data

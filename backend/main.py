@@ -84,6 +84,9 @@ def create_app() -> FastAPI:
     from backend.api.tasks import router as tasks_router
     app.include_router(tasks_router)
 
+    from backend.api.settings import router as settings_router
+    app.include_router(settings_router)
+
     return app
 
 

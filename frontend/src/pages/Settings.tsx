@@ -1,7 +1,27 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Button, Card, Descriptions, Space, Table, Tag, Typography, message } from 'antd'
-import { ReloadOutlined } from '@ant-design/icons'
-import { getHealth, listAgents, reloadAgents, type HealthResponse } from '../api'
+import {
+  Button,
+  Card,
+  Descriptions,
+  Form,
+  Input,
+  Select,
+  Space,
+  Table,
+  Tag,
+  Typography,
+  message,
+} from 'antd'
+import { ReloadOutlined, SaveOutlined } from '@ant-design/icons'
+import {
+  getHealth,
+  getLLMSettings,
+  listAgents,
+  reloadAgents,
+  saveLLMSettings,
+  type HealthResponse,
+  type LLMSettings,
+} from '../api'
 import type { AgentInfo } from '../types'
 
 export default function Settings() {
@@ -10,6 +30,8 @@ export default function Settings() {
   const [agents, setAgents] = useState<AgentInfo[]>([])
   const [agentsLoading, setAgentsLoading] = useState(false)
   const [reloading, setReloading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [llmForm] = Form.useForm<LLMSettings>()
 
   const fetchHealth = useCallback(async () => {
     setHealthLoading(true)
@@ -34,10 +56,20 @@ export default function Settings() {
     }
   }, [])
 
+  const fetchLLMSettings = useCallback(async () => {
+    try {
+      const settings = await getLLMSettings()
+      llmForm.setFieldsValue(settings)
+    } catch {
+      message.error('加载 LLM 配置失败')
+    }
+  }, [llmForm])
+
   useEffect(() => {
     fetchHealth()
     fetchAgents()
-  }, [fetchHealth, fetchAgents])
+    fetchLLMSettings()
+  }, [fetchHealth, fetchAgents, fetchLLMSettings])
 
   const handleReload = async () => {
     setReloading(true)
@@ -49,6 +81,20 @@ export default function Settings() {
       message.error('重新加载失败')
     } finally {
       setReloading(false)
+    }
+  }
+
+  const handleSaveLLM = async () => {
+    setSaving(true)
+    try {
+      const values = await llmForm.validateFields()
+      await saveLLMSettings(values)
+      message.success('LLM 配置已保存（重启后端生效）')
+      fetchHealth()
+    } catch {
+      message.error('保存失败')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -105,6 +151,46 @@ export default function Settings() {
             <Descriptions.Item label="模型">{health.llm_model}</Descriptions.Item>
           </Descriptions>
         )}
+      </Card>
+
+      <Card
+        title="LLM 配置"
+        extra={
+          <Button icon={<SaveOutlined />} type="primary" onClick={handleSaveLLM} loading={saving} size="small">
+            保存
+          </Button>
+        }
+      >
+        <Form form={llmForm} layout="vertical" style={{ maxWidth: 600 }}>
+          <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
+            修改后保存，重启后端服务即可生效。API Key 以脱敏形式展示，留空或不修改则保持原值。
+          </Typography.Text>
+          <Form.Item label="API 格式" name="llm_api_format">
+            <Select>
+              <Select.Option value="openai_compat">OpenAI Compatible</Select.Option>
+              <Select.Option value="ollama">Ollama</Select.Option>
+            </Select>
+          </Form.Item>
+          <Form.Item label="Base URL" name="llm_base_url">
+            <Input placeholder="https://api.openai.com/v1" />
+          </Form.Item>
+          <Form.Item label="模型" name="llm_model">
+            <Input placeholder="gpt-4o / deepseek-chat / ..." />
+          </Form.Item>
+          <Form.Item label="API Key" name="llm_api_key">
+            <Input.Password placeholder="sk-..." />
+          </Form.Item>
+
+          <Typography.Text type="secondary" style={{ display: 'block', margin: '16px 0 8px' }}>
+            Embedding 配置（留空则复用 LLM 配置）
+          </Typography.Text>
+          <Form.Item label="Embedding Base URL" name="embedding_base_url">
+            <Input placeholder="留空则使用 LLM Base URL" />
+          </Form.Item>
+          <Form.Item label="Embedding 模型" name="embedding_model">
+            <Input placeholder="text-embedding-3-small" />
+          </Form.Item>
+        </Form>
       </Card>
 
       <Card
