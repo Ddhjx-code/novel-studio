@@ -8,8 +8,11 @@ from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
 from uuid import uuid4
 
+from backend.orchestrator.context_helpers import load_bible_section, load_template, search_relevant_chunks
+from backend.prompts import format_prompt
 from backend.projects.workspace import ProjectWorkspace
 from backend.runtime.session import SessionManager
+from backend.vectorstore.embedding import EmbeddingConfig
 
 log = logging.getLogger(__name__)
 
@@ -31,11 +34,13 @@ class ReviewPipeline:
         workspace: ProjectWorkspace,
         chapter_num: int,
         mode: str = "review",
+        embedding_config: EmbeddingConfig | None = None,
     ) -> None:
         self._session_manager = session_manager
         self._workspace = workspace
         self._chapter_num = chapter_num
         self._mode = mode
+        self._embedding_config = embedding_config or EmbeddingConfig()
         self._pipeline_id = uuid4().hex[:12]
 
     @property
@@ -68,7 +73,7 @@ class ReviewPipeline:
         queue = session.subscribe()
 
         try:
-            prompt = self._build_prompt(chapter_text)
+            prompt = await self._build_prompt(chapter_text)
             await session.submit(prompt)
             output = await self._collect_output(queue)
 
@@ -93,17 +98,51 @@ class ReviewPipeline:
 
         return result
 
-    def _build_prompt(self, chapter_text: str) -> str:
+    async def _build_prompt(self, chapter_text: str) -> str:
         n = self._chapter_num
         if self._mode == "review":
-            return (
-                f"请审查第{n}章正文，给出十维度评审报告。\n\n"
-                f"章节正文：\n{chapter_text}\n"
-            )
+            return await self._build_review_prompt(n, chapter_text)
         return (
             f"请润色第{n}章正文，优化文笔但保持原意。\n\n"
             f"章节正文：\n{chapter_text}\n"
         )
+
+    async def _build_review_prompt(self, chapter_num: int, chapter_text: str) -> str:
+        ws = self._workspace
+        summary = ws.read_file("bible/global_summary.md")
+        char_state = ws.read_file("bible/character_state.md")
+        bible_characters = load_bible_section(ws, "bible/characters")
+        bible_worldbuilding = load_bible_section(ws, "bible/worldbuilding")
+        bible_plot = load_bible_section(ws, "bible/plot")
+
+        rag_query = chapter_text[:500] if chapter_text else summary
+        rag_results = await search_relevant_chunks(
+            ws, rag_query, self._embedding_config, chapter_num
+        )
+
+        sections = [f"请审查第{chapter_num}章正文，给出十维度评审报告。\n"]
+        sections.append(f"章节正文：\n{chapter_text}\n")
+
+        novel_setting = "\n".join(filter(None, [bible_characters, bible_worldbuilding]))
+        if novel_setting or char_state or summary or bible_plot:
+            consistency_section = format_prompt(
+                "consistency_check_prompt",
+                novel_setting=novel_setting,
+                character_state=char_state,
+                global_summary=summary,
+                plot_arcs=bible_plot,
+                chapter_text=chapter_text,
+            )
+            sections.append(f"--- 一致性检查参考资料 ---\n{consistency_section}\n")
+
+        if rag_results:
+            sections.append(f"相关前文片段：\n{rag_results}\n")
+
+        template = load_template("reviewer-skill", "review-report-template.md")
+        if template:
+            sections.append(f"--- 输出模板 ---\n请按以下模板格式输出：\n{template}\n")
+
+        return "\n".join(sections)
 
     def _save_output(self, output: str) -> str:
         n = self._chapter_num

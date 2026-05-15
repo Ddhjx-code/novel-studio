@@ -10,6 +10,7 @@ import pytest
 
 from backend.orchestrator.review_pipeline import ReviewPipeline
 from backend.projects.workspace import ProjectWorkspace
+from backend.vectorstore.embedding import EmbeddingConfig
 
 
 def _make_mock_session(output_text: str = "审查报告"):
@@ -105,3 +106,83 @@ class TestReviewPipeline:
         result = await pipeline.run()
         assert result.status == "failed"
         assert "not found" in (result.error or "")
+
+    @pytest.mark.asyncio
+    async def test_review_prompt_includes_bible(self, workspace, mock_session_manager):
+        """Review mode should load Bible content into prompt."""
+        workspace.write_file("bible/characters/hero.md", "名字：张三\n年龄：25")
+        workspace.write_file("bible/worldbuilding/setting.md", "现代都市")
+        workspace.write_file("bible/global_summary.md", "全局摘要")
+        workspace.write_file("bible/character_state.md", "角色状态")
+
+        submitted_prompts: list[str] = []
+
+        async def capture_submit(prompt):
+            submitted_prompts.append(prompt)
+
+        session = _make_mock_session()
+        session.submit = AsyncMock(side_effect=capture_submit)
+        mgr = MagicMock()
+        mgr.create_for_agent = AsyncMock(return_value=session)
+        mgr.remove = AsyncMock()
+
+        pipeline = ReviewPipeline(
+            session_manager=mgr,
+            workspace=workspace,
+            chapter_num=1,
+            mode="review",
+        )
+        await pipeline.run()
+
+        assert len(submitted_prompts) == 1
+        prompt = submitted_prompts[0]
+        assert "张三" in prompt
+        assert "现代都市" in prompt
+        assert "一致性检查参考资料" in prompt
+
+    @pytest.mark.asyncio
+    async def test_polish_prompt_unchanged(self, workspace, mock_session_manager):
+        """Polish mode should NOT load Bible content."""
+        workspace.write_file("bible/characters/hero.md", "名字：张三")
+
+        submitted_prompts: list[str] = []
+
+        async def capture_submit(prompt):
+            submitted_prompts.append(prompt)
+
+        session = _make_mock_session()
+        session.submit = AsyncMock(side_effect=capture_submit)
+        mgr = MagicMock()
+        mgr.create_for_agent = AsyncMock(return_value=session)
+        mgr.remove = AsyncMock()
+
+        pipeline = ReviewPipeline(
+            session_manager=mgr,
+            workspace=workspace,
+            chapter_num=1,
+            mode="polish",
+        )
+        await pipeline.run()
+
+        assert len(submitted_prompts) == 1
+        prompt = submitted_prompts[0]
+        assert "张三" not in prompt
+        assert "润色" in prompt
+
+    @pytest.mark.asyncio
+    async def test_embedding_config_passed(self, workspace, mock_session_manager):
+        """Embedding config should be accepted by constructor."""
+        config = EmbeddingConfig(
+            api_format="openai_compat",
+            base_url="http://test:8080",
+            model="test-embed",
+            api_key="test-key",
+        )
+        pipeline = ReviewPipeline(
+            session_manager=mock_session_manager,
+            workspace=workspace,
+            chapter_num=1,
+            mode="review",
+            embedding_config=config,
+        )
+        assert pipeline._embedding_config == config

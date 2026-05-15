@@ -9,7 +9,9 @@ from enum import Enum
 from typing import Any, Awaitable, Callable
 from uuid import uuid4
 
+from backend.orchestrator.context_helpers import load_bible_section, load_template, search_relevant_chunks
 from backend.orchestrator.finalize import LLMConfig, finalize_chapter
+from backend.prompts import format_prompt
 from backend.projects.workspace import ProjectWorkspace
 from backend.runtime.session import SessionManager
 from backend.vectorstore.embedding import EmbeddingConfig
@@ -57,6 +59,8 @@ _STEP_AGENT_MAP: dict[PipelineStep, str] = {
     PipelineStep.REVIEW: "reviewer",
     PipelineStep.POLISH: "polisher",
 }
+
+_AUTONOMOUS_STEPS = frozenset({PipelineStep.PLAN, PipelineStep.WRITE})
 
 
 class ChapterPipeline:
@@ -153,8 +157,9 @@ class ChapterPipeline:
             return await self._step_agent(step, context_bundle, event_callback)
 
     async def _step_context(self, context_bundle: dict[str, str]) -> str:
-        """Load bible files, previous chapter tail, etc."""
+        """Load bible files, RAG results, previous chapter tail, etc."""
         ws = self._workspace
+
         context_bundle["global_summary"] = ws.read_file("bible/global_summary.md")
         context_bundle["character_state"] = ws.read_file("bible/character_state.md")
 
@@ -167,6 +172,15 @@ class ChapterPipeline:
 
         plan_text = ws.read_file(f"plans/ch{self._chapter_num:02d}-plan.md")
         context_bundle["existing_plan"] = plan_text
+
+        context_bundle["bible_characters"] = load_bible_section(ws, "bible/characters")
+        context_bundle["bible_worldbuilding"] = load_bible_section(ws, "bible/worldbuilding")
+        context_bundle["bible_plot"] = load_bible_section(ws, "bible/plot")
+
+        query_text = plan_text or context_bundle["global_summary"]
+        context_bundle["rag_results"] = await search_relevant_chunks(
+            ws, query_text, self._embedding_config, self._chapter_num
+        )
 
         return f"Context loaded: {len(context_bundle)} keys"
 
@@ -189,7 +203,14 @@ class ChapterPipeline:
             await session.submit(prompt)
             output_text = await self._collect_output(queue, event_callback, step)
 
-            self._save_step_output(step, output_text)
+            if step in _AUTONOMOUS_STEPS:
+                file_output = self._read_step_output(step)
+                if file_output:
+                    output_text = file_output
+                else:
+                    self._save_step_output(step, output_text)
+            else:
+                self._save_step_output(step, output_text)
 
             if step == PipelineStep.WRITE:
                 context_bundle["chapter_text"] = output_text
@@ -243,27 +264,31 @@ class ChapterPipeline:
         summary = context_bundle.get("global_summary", "")
         char_state = context_bundle.get("character_state", "")
         prev_tail = context_bundle.get("prev_chapter_tail", "")
+        bible_characters = context_bundle.get("bible_characters", "")
+        bible_worldbuilding = context_bundle.get("bible_worldbuilding", "")
+        bible_plot = context_bundle.get("bible_plot", "")
+        rag_results = context_bundle.get("rag_results", "")
+        existing_plan = context_bundle.get("existing_plan", "")
 
         if step == PipelineStep.PLAN:
-            return (
-                f"请为第{chapter_num}章创建详细的场景规划。\n\n"
-                f"前文摘要：\n{summary}\n\n"
-                f"角色状态：\n{char_state}\n\n"
-                f"上一章结尾：\n{prev_tail}\n"
+            return self._build_plan_prompt(
+                chapter_num, summary, char_state, prev_tail,
+                bible_characters, bible_worldbuilding, bible_plot,
+                rag_results, existing_plan,
             )
         elif step == PipelineStep.WRITE:
             plan = context_bundle.get("plan_text", "")
-            return (
-                f"请根据以下规划撰写第{chapter_num}章正文。\n\n"
-                f"章节规划：\n{plan}\n\n"
-                f"前文摘要：\n{summary}\n\n"
-                f"角色状态：\n{char_state}\n"
+            return self._build_write_prompt(
+                chapter_num, plan, summary, char_state,
+                bible_characters, bible_worldbuilding,
+                rag_results, existing_plan,
             )
         elif step == PipelineStep.REVIEW:
             chapter_text = context_bundle.get("chapter_text", "")
-            return (
-                f"请审查第{chapter_num}章正文，给出十维度评审报告。\n\n"
-                f"章节正文：\n{chapter_text}\n"
+            return self._build_review_prompt(
+                chapter_num, chapter_text, summary, char_state,
+                bible_characters, bible_worldbuilding, bible_plot,
+                rag_results,
             )
         elif step == PipelineStep.POLISH:
             chapter_text = context_bundle.get("chapter_text", "")
@@ -278,6 +303,121 @@ class ChapterPipeline:
                 f"规划内容：\n{plan}\n"
             )
         return f"第{chapter_num}章相关任务"
+
+    def _build_plan_prompt(
+        self,
+        chapter_num: int,
+        summary: str,
+        char_state: str,
+        prev_tail: str,
+        bible_characters: str,
+        bible_worldbuilding: str,
+        bible_plot: str,
+        rag_results: str,
+        existing_plan: str,
+    ) -> str:
+        sections = [f"请为第{chapter_num}章创建详细的场景规划。\n"]
+
+        if summary:
+            sections.append(f"前文摘要：\n{summary}\n")
+        if char_state:
+            sections.append(f"角色状态：\n{char_state}\n")
+        if prev_tail:
+            sections.append(f"上一章结尾：\n{prev_tail}\n")
+        if bible_characters:
+            sections.append(f"角色设定：\n{bible_characters}\n")
+        if bible_worldbuilding:
+            sections.append(f"世界观：\n{bible_worldbuilding}\n")
+        if bible_plot:
+            sections.append(f"剧情规划：\n{bible_plot}\n")
+        if rag_results:
+            sections.append(f"相关前文片段：\n{rag_results}\n")
+        if existing_plan:
+            sections.append(f"已有规划（参考）：\n{existing_plan}\n")
+
+        template = load_template("planner-skill", "plan-template.md")
+        if template:
+            sections.append(f"--- 输出模板 ---\n请按以下模板格式输出：\n{template}\n")
+
+        return "\n".join(sections)
+
+    def _build_write_prompt(
+        self,
+        chapter_num: int,
+        plan: str,
+        summary: str,
+        char_state: str,
+        bible_characters: str,
+        bible_worldbuilding: str,
+        rag_results: str,
+        existing_plan: str,
+    ) -> str:
+        sections = [f"请根据以下规划撰写第{chapter_num}章正文。\n"]
+
+        effective_plan = plan or existing_plan
+        if effective_plan:
+            sections.append(f"章节规划：\n{effective_plan}\n")
+        if summary:
+            sections.append(f"前文摘要：\n{summary}\n")
+        if char_state:
+            sections.append(f"角色状态：\n{char_state}\n")
+        if bible_characters:
+            sections.append(f"角色设定：\n{bible_characters}\n")
+        if bible_worldbuilding:
+            sections.append(f"世界观：\n{bible_worldbuilding}\n")
+        if rag_results:
+            sections.append(f"相关前文片段：\n{rag_results}\n")
+
+        template = load_template("writer-skill", "chapter-template.md")
+        if template:
+            sections.append(f"--- 输出模板 ---\n请按以下模板格式输出：\n{template}\n")
+
+        return "\n".join(sections)
+
+    def _build_review_prompt(
+        self,
+        chapter_num: int,
+        chapter_text: str,
+        summary: str,
+        char_state: str,
+        bible_characters: str,
+        bible_worldbuilding: str,
+        bible_plot: str,
+        rag_results: str,
+    ) -> str:
+        sections = [f"请审查第{chapter_num}章正文，给出十维度评审报告。\n"]
+        sections.append(f"章节正文：\n{chapter_text}\n")
+
+        novel_setting = "\n".join(filter(None, [bible_characters, bible_worldbuilding]))
+        if novel_setting or char_state or summary or bible_plot:
+            consistency_section = format_prompt(
+                "consistency_check_prompt",
+                novel_setting=novel_setting,
+                character_state=char_state,
+                global_summary=summary,
+                plot_arcs=bible_plot,
+                chapter_text=chapter_text,
+            )
+            sections.append(f"--- 一致性检查参考资料 ---\n{consistency_section}\n")
+
+        if rag_results:
+            sections.append(f"相关前文片段：\n{rag_results}\n")
+
+        template = load_template("reviewer-skill", "review-report-template.md")
+        if template:
+            sections.append(f"--- 输出模板 ---\n请按以下模板格式输出：\n{template}\n")
+
+        return "\n".join(sections)
+
+    def _read_step_output(self, step: PipelineStep) -> str:
+        """Read back the file an autonomous agent may have written."""
+        ws = self._workspace
+        n = self._chapter_num
+        if step == PipelineStep.PLAN:
+            return ws.read_file(f"plans/ch{n:02d}-plan.md")
+        elif step == PipelineStep.WRITE:
+            return ws.read_file(f"chapters/ch{n:02d}.md")
+        return ""
 
     def _save_step_output(self, step: PipelineStep, output: str) -> None:
         ws = self._workspace

@@ -33,17 +33,12 @@ permission_mode: bypassPermissions
 
 ## 技能包
 
-执行任务前，按阶段读取所需技能文件，不在任务开始时全部读取：
+执行任务前，按阶段使用 `skill` 工具加载所需技能，不在任务开始时全部加载：
 
-- **主技能**：.claude/skills/writer-skill/SKILL.md（必读）
-- **章节结构**：.claude/skills/writer-skill/chapter-guide.md（骨架阶段必读）
-- **Beat词典**：.claude/skills/planner-skill/references/beat-vocabulary.md（骨架阶段必读）
-- **对话写作**：.claude/skills/writer-skill/dialogue-writing.md（扩展阶段按需读取）
-- **描写技巧**：.claude/skills/writer-skill/description-craft.md（扩展阶段按需读取）
-- **内容扩充**：.claude/skills/writer-skill/content-expansion.md（扩展阶段参考）
-- **悬念技巧**：.claude/skills/shared/hook-techniques.md（扩展阶段按需读取）
-- **去AI味**：.claude/skills/shared/deai-rules.md（扩展阶段必读）
-- **体裁标准**：.claude/skills/writer-skill/references/genre-standards.md（扩展阶段按体裁读取）
+- **主技能**：使用 `skill writer-skill` 加载（必读）
+- **悬念技巧**：使用 `skill hook-techniques` 加载（扩展阶段按需）
+- **去AI味**：使用 `skill deai-rules` 加载（扩展阶段必读）
+- **模板和参考文件**：如 pipeline prompt 中已包含模板内容（标记为"输出模板"），直接使用；否则通过 `skill writer-skill` 获取指引
 
 ## 任务类型
 
@@ -58,10 +53,9 @@ permission_mode: bypassPermissions
 执行：
 
 **第一步：读取必要文件**
-- 读取 skills/writer-skill/SKILL.md
-- 读取 skills/writer-skill/chapter-guide.md
-- 读取 bible/characters/[本章相关角色].md 的当前状态字段
-- 读取 chapters/ch[N-1].md 结尾约500字（如非第一章）
+- 使用 `skill writer-skill` 加载主技能
+- 读取 bible/characters/[本章相关角色].md 的当前状态字段（如 prompt 中已包含角色设定则参考 prompt）
+- 读取 chapters/ch[N-1].md 结尾约500字（如非第一章，如 prompt 中已包含上一章结尾则参考 prompt）
 
 **第二步：理解规划**
 通读主Agent传入的场景规划，明确：
@@ -118,14 +112,11 @@ Beat 映射要求：
 骨架自检发现问题 → 修改骨架，不进入第四步。
 骨架写入 plans/chNN-skeleton.md。
 
-**第四步：按需读取扩展技能**
+**第四步：按需加载扩展技能**
 根据本章内容特点选择：
-- 对话密集 → 读取 dialogue-writing.md
-- 环境/情感描写重 → 读取 description-craft.md
-- 涉及悬念伏笔处理 → 读取 hook-techniques.md
-- 读取 skills/shared/deai-rules.md（必读）
-- 读取 skills/writer-skill/content-expansion.md（作为扩展参考）
-- 按 outline.md 中的体裁字段，读取 references/genre-standards.md 中对应体裁
+- 对话密集 → 使用 `skill writer-skill` 获取对话写作指引
+- 涉及悬念伏笔处理 → 使用 `skill hook-techniques` 加载
+- 使用 `skill deai-rules` 加载去AI味规则（必读）
 
 **第五步：分场景扩展正文**
 在骨架基础上逐场景扩展，每个场景独立生成。
@@ -178,7 +169,7 @@ Beat 映射要求：
 大纲语言残留 → 立即修正为叙事语言。
 
 **第七步：写入文件**
-按 templates/chapter-template.md 格式写入 chapters/chNN.md。
+如 prompt 中已包含章节模板（标记为"输出模板"），按该模板格式写入 chapters/chNN.md；否则使用 `skill writer-skill` 获取模板。
 向主Agent返回完成确认，附上总字数。
 
 ---

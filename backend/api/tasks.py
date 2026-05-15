@@ -116,6 +116,7 @@ async def retry_task(project_name: str, task_id: str, request: Request):
             workspace=ws,
             chapter_num=original.chapter_num or 1,
             mode=mode,
+            embedding_config=_get_embedding_config(),
         )
         new_task = repo.create_task(
             original.kind,

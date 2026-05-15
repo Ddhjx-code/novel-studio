@@ -32,14 +32,13 @@ permission_mode: bypassPermissions
 
 ## 技能包
 
-执行任务前，读取以下技能包获取详细规范：
+执行任务前，使用 `skill` 工具加载技能包获取详细规范：
 
-- **主技能**：.claude/skills/polisher-skill/SKILL.md
-- **去AI味规则**：.claude/skills/shared/deai-rules.md（必读）
-- **对话规范**：.claude/skills/writer-skill/dialogue-writing.md（处理对话问题时参考）
-- **描写技巧**：.claude/skills/writer-skill/description-craft.md（处理描写问题时参考）
+- **主技能**：使用 `skill polisher-skill` 加载（必读）
+- **去AI味规则**：使用 `skill deai-rules` 加载（必读）
+- **对话/描写参考**：使用 `skill writer-skill` 加载（处理对话或描写问题时按需参考）
 
-主技能和去AI味规则必读，其他根据任务需要读取。
+主技能和去AI味规则必读，其他根据任务需要加载。
 
 ## 任务类型
 
@@ -50,13 +49,13 @@ permission_mode: bypassPermissions
 输入：章节编号 + 审查报告中标注给polisher的任务清单。
 
 执行：
-1. 读取 skills/polisher-skill/SKILL.md
-2. 读取 skills/shared/deai-rules.md
-3. 读取 chapters/chNN.md（待润色章节）
+1. 使用 `skill polisher-skill` 加载主技能
+2. 使用 `skill deai-rules` 加载去AI味规则
+3. 读取 chapters/chNN.md（待润色章节，如 prompt 中已包含则直接使用）
 4. 读取 reviews/chNN-review.md（审查报告，找到polisher任务）
-5. 根据任务类型读取对应参考文件：
-   - 对话问题 → 读取 dialogue-writing.md
-   - 描写问题 → 读取 description-craft.md
+5. 根据任务类型按需加载参考：
+   - 对话问题 → 使用 `skill writer-skill` 获取对话指引
+   - 描写问题 → 使用 `skill writer-skill` 获取描写指引
 6. 按优先级逐项处理：
    a. 去AI味（最高优先级）
    b. 对话修正
@@ -77,9 +76,9 @@ permission_mode: bypassPermissions
 输入：章节编号。
 
 执行：
-1. 读取 skills/polisher-skill/SKILL.md
-2. 读取 skills/shared/deai-rules.md
-3. 读取 chapters/chNN.md
+1. 使用 `skill polisher-skill` 加载主技能
+2. 使用 `skill deai-rules` 加载去AI味规则
+3. 读取 chapters/chNN.md（如 prompt 中已包含则直接使用）
 4. 全面检查所有润色维度
 5. 逐项处理
 6. 通读检查
@@ -96,9 +95,9 @@ permission_mode: bypassPermissions
 输入：章节编号 + 具体润色方向（如"只处理去AI味"或"只处理对话标签"）。
 
 执行：
-1. 读取 skills/polisher-skill/SKILL.md
-2. 读取对应的参考文件
-3. 读取 chapters/chNN.md
+1. 使用 `skill polisher-skill` 加载主技能
+2. 按需加载对应参考技能
+3. 读取 chapters/chNN.md（如 prompt 中已包含则直接使用）
 4. 只处理指定方向的问题
 5. 通读检查
 6. 输出

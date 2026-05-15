@@ -33,14 +33,11 @@ permission_mode: bypassPermissions
 
 ## 技能包
 
-执行任务前，读取以下技能包获取详细规范：
+执行任务前，使用 `skill` 工具加载技能包获取详细规范：
 
-- **主技能**：.claude/skills/planner-skill/SKILL.md
-- **归档规范**：.claude/skills/planner-skill/archive-maintenance.md
-- **大纲模板**：.claude/skills/planner-skill/templates/outline-template.md
-- **人物模板**：.claude/skills/planner-skill/templates/character-template.md
-- **场景规划模板**：.claude/skills/planner-skill/templates/plan-template.md
-- **悬念技巧**：.claude/skills/shared/hook-techniques.md
+- **主技能**：使用 `skill planner-skill` 加载
+- **悬念技巧**：使用 `skill hook-techniques` 加载
+- **模板和参考文件**：如 pipeline prompt 中已包含模板内容（标记为"输出模板"），直接使用；否则通过 `skill planner-skill` 获取指引
 
 ## 任务类型
 
@@ -51,8 +48,8 @@ permission_mode: bypassPermissions
 输入：用户提供的故事素材和方向。
 
 执行：
-1. 读取 planner-skill/SKILL.md 中"功能一：构建大纲"
-2. 读取 templates/outline-template.md
+1. 使用 `skill planner-skill` 加载技能包中"功能一：构建大纲"
+2. 如 prompt 中已包含大纲模板则直接使用，否则从技能包获取
 3. 构建完整大纲
 4. 返回大纲内容给主Agent，**等待主Agent传回"确认写入"指令后**，再写入 bible/plot/outline.md
 
@@ -70,8 +67,8 @@ permission_mode: bypassPermissions
 输入：已确认的大纲。
 
 执行：
-1. 读取 planner-skill/SKILL.md 中"功能二：设计人物"
-2. 读取 templates/character-template.md
+1. 使用 `skill planner-skill` 加载技能包中"功能二：设计人物"
+2. 如 prompt 中已包含人物模板则直接使用，否则从技能包获取
 3. 为每个角色设计档案
 4. 设计人物关系网
 5. 返回内容给主Agent，**等待主Agent传回"确认写入"指令后**，再写入 bible/characters/
@@ -92,8 +89,8 @@ permission_mode: bypassPermissions
 输入：已确认的大纲和人物设定。
 
 执行：
-1. 读取 planner-skill/SKILL.md 中"功能三：建立世界观"
-2. 读取 archive-maintenance.md 中的世界观文件格式
+1. 使用 `skill planner-skill` 加载技能包中"功能三：建立世界观"
+2. 从技能包中获取世界观文件格式规范
 3. 构建世界观文件
 4. 返回内容给主Agent，**等待主Agent传回"确认写入"指令后**，再写入 bible/worldbuilding/
 
@@ -118,7 +115,9 @@ permission_mode: bypassPermissions
 - 相关人物档案的当前状态
 - bible/plot/suspense-tracker.md
 - bible/plot/foreshadow-tracker.md
-- skills/shared/hook-techniques.md
+- 使用 `skill hook-techniques` 加载悬念技巧
+
+注：如 pipeline prompt 中已包含上述 Bible 内容，无需重复读取。
 
 **第二步：判断场景结构**
 
@@ -185,8 +184,8 @@ permission_mode: bypassPermissions
 
 **第七步：输出**
 
-读取 .claude/skills/planner-skill/templates/plan-template.md
-按模板格式填写后写入 plans/chNN-plan.md
+如 prompt 中已包含规划模板（标记为"输出模板"），按该模板格式填写；否则使用 `skill planner-skill` 获取模板。
+填写后写入 plans/chNN-plan.md。
 完成后向主Agent返回文件路径：plans/chNN-plan.md
 
 ---
@@ -198,8 +197,8 @@ permission_mode: bypassPermissions
 输入：定稿章节编号。
 
 执行：
-1. 读取 planner-skill/SKILL.md 中"功能五：章节定稿后更新"
-2. 读取 archive-maintenance.md
+1. 使用 `skill planner-skill` 加载技能包中"功能五：章节定稿后更新"
+2. 从技能包中获取归档维护规范
 3. 读取定稿章节正文
 4. 读取该章审查报告（连贯性备注部分）
    - 如连贯性备注为空或不存在，直接从定稿正文中提取变化信息

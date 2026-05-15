@@ -40,13 +40,12 @@ permission_mode: bypassPermissions
 
 ## 技能包
 
-按审查阶段读取，不在开始时全部读取：
+按审查阶段使用 `skill` 工具加载，不在开始时全部加载：
 
-- **主技能**：.claude/skills/reviewer-skill/SKILL.md（必读）
-- **审查清单**：.claude/skills/reviewer-skill/review-checklist.md（必读）
-- **质量标准**：.claude/skills/reviewer-skill/quality-standards.md（评分时读取）
-- **悬念技巧**：.claude/skills/shared/hook-techniques.md（审查维度九时读取）
-- **去AI味规则**：.claude/skills/shared/deai-rules.md（审查维度八时读取）
+- **主技能**：使用 `skill reviewer-skill` 加载（必读）
+- **悬念技巧**：使用 `skill hook-techniques` 加载（审查维度九时）
+- **去AI味规则**：使用 `skill deai-rules` 加载（审查维度八时）
+- **模板**：如 prompt 中已包含审查报告模板（标记为"输出模板"），直接使用
 
 ## 任务类型
 
@@ -57,14 +56,15 @@ permission_mode: bypassPermissions
 输入：章节编号。
 
 **第一步：读取必要文件**
-- 读取 skills/reviewer-skill/SKILL.md
-- 读取 skills/reviewer-skill/review-checklist.md
-- 读取 chapters/chNN.md（待审查章节正文）
+- 使用 `skill reviewer-skill` 加载主技能和审查清单
+- 读取 chapters/chNN.md（待审查章节正文，如 prompt 中已包含则直接使用）
 - 读取 plans/chNN-plan.md（场景规划）
 - 读取 plans/chNN-skeleton.md（骨架稿，如存在）
-- 读取相关人物档案 bible/characters/[相关角色].md（当前状态字段）
+- 读取相关人物档案 bible/characters/[相关角色].md（如 prompt 中已包含角色设定则参考 prompt）
 - 读取 chapters/ch[N-1].md 结尾约500字（用于连贯性审查）
-- 读取 bible/plot/suspense-tracker.md（用于悬念维度审查）
+- 读取 bible/plot/suspense-tracker.md（用于悬念维度审查，如 prompt 中已包含剧情规划则参考 prompt）
+
+注：当由 pipeline 调用时，prompt 中会包含一致性检查参考资料（Bible 设定、前文摘要、角色状态等），可直接使用无需重复读取。
 
 **第二步：建立审查基准**
 
@@ -83,9 +83,9 @@ permission_mode: bypassPermissions
 每个维度检查完成后立即记录评分和问题，不积累到最后。
 
 审查每个维度时：
-- 读取 quality-standards.md 对照分级标准
-- 审查维度八时读取 shared/deai-rules.md
-- 审查维度九时读取 shared/hook-techniques.md
+- 参考主技能中的分级标准
+- 审查维度八时使用 `skill deai-rules` 加载去AI味规则
+- 审查维度九时使用 `skill hook-techniques` 加载悬念技巧
 
 **第四步：问题分类**
 
@@ -113,9 +113,9 @@ permission_mode: bypassPermissions
 
 **第五步：生成报告**
 
-读取 templates/review-report-template.md，按模板格式输出报告。
+如 prompt 中已包含审查报告模板（标记为"输出模板"），按该模板格式输出报告；否则使用 `skill reviewer-skill` 获取模板。
 
-输出：写入 reviews/chNN-review.md。
+输出：按模板格式输出报告文本。当由 pipeline 调用时，报告内容作为文本返回（pipeline 负责写入文件）。
 
 ---
 

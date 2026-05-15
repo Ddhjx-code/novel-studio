@@ -129,7 +129,8 @@ async def review_chapter(project_name: str, n: int, request: Request):
     mgr = request.app.state.session_manager
 
     pipeline = ReviewPipeline(
-        session_manager=mgr, workspace=ws, chapter_num=n, mode="review"
+        session_manager=mgr, workspace=ws, chapter_num=n, mode="review",
+        embedding_config=_get_embedding_config(),
     )
     task = repo.create_task(
         "chapter_review",
@@ -153,7 +154,8 @@ async def polish_chapter(project_name: str, n: int, request: Request):
     mgr = request.app.state.session_manager
 
     pipeline = ReviewPipeline(
-        session_manager=mgr, workspace=ws, chapter_num=n, mode="polish"
+        session_manager=mgr, workspace=ws, chapter_num=n, mode="polish",
+        embedding_config=_get_embedding_config(),
     )
     task = repo.create_task(
         "chapter_polish",
