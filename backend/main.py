@@ -30,26 +30,12 @@ log = logging.getLogger(__name__)
 STATIC_DIR = REPO_ROOT / "frontend" / "dist"
 
 
-@asynccontextmanager
-async def _api_lifespan(app: FastAPI) -> AsyncIterator[None]:
-    settings = get_settings()
-    recovered = recover_interrupted_tasks(settings.projects_dir)
-    if recovered:
-        log.info("Recovered %d interrupted tasks", recovered)
-
-    app.state.session_manager = SessionManager()
-    app.state.active_pipelines = {}
-    yield
-    await app.state.session_manager.close_all()
-
-
 def _build_api_app() -> FastAPI:
     """Create the API sub-application that handles all REST + WS routes."""
     settings = get_settings()
     api_app = FastAPI(
         title="Novel Studio API",
         version=__version__,
-        lifespan=_api_lifespan,
     )
 
     @api_app.get("/health")
@@ -93,11 +79,25 @@ def _build_api_app() -> FastAPI:
     return api_app
 
 
+@asynccontextmanager
+async def _app_lifespan(root: FastAPI) -> AsyncIterator[None]:
+    api = root.state._api
+    settings = get_settings()
+    recovered = recover_interrupted_tasks(settings.projects_dir)
+    if recovered:
+        log.info("Recovered %d interrupted tasks", recovered)
+
+    api.state.session_manager = SessionManager()
+    api.state.active_pipelines = {}
+    yield
+    await api.state.session_manager.close_all()
+
+
 def create_app() -> FastAPI:
     settings = get_settings()
     api_app = _build_api_app()
 
-    root_app = FastAPI(title="Novel Studio", version=__version__)
+    root_app = FastAPI(title="Novel Studio", version=__version__, lifespan=_app_lifespan)
 
     root_app.add_middleware(
         CORSMiddleware,
