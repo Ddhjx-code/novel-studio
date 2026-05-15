@@ -15,6 +15,12 @@ export interface ChapterContent {
   content: string
 }
 
+export interface ChapterArtifact {
+  chapter_num: number
+  content: string
+  exists: boolean
+}
+
 export interface PipelineResponse {
   pipeline_id: string
   task_id?: string

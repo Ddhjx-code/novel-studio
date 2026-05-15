@@ -3,6 +3,7 @@ import type {
   AgentListResponse,
   BibleFileContent,
   BibleTreeResponse,
+  ChapterArtifact,
   ChapterContent,
   PipelineResponse,
   Project,
@@ -58,6 +59,7 @@ export interface CreateSessionRequest {
   model?: string
   system_prompt?: string
   max_turns?: number
+  agent_name?: string
 }
 
 export interface CreateSessionResponse {
@@ -141,6 +143,16 @@ export async function reviewChapter(project: string, n: number): Promise<Pipelin
 
 export async function polishChapter(project: string, n: number): Promise<PipelineResponse> {
   const resp = await api.post<PipelineResponse>(`/projects/${project}/chapters/${n}/polish`)
+  return resp.data
+}
+
+export async function readPlan(project: string, n: number): Promise<ChapterArtifact> {
+  const resp = await api.get<ChapterArtifact>(`/projects/${project}/chapters/${n}/plan`)
+  return resp.data
+}
+
+export async function readReview(project: string, n: number): Promise<ChapterArtifact> {
+  const resp = await api.get<ChapterArtifact>(`/projects/${project}/chapters/${n}/review`)
   return resp.data
 }
 

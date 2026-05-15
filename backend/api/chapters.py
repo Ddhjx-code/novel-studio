@@ -115,6 +115,20 @@ async def read_chapter(project_name: str, n: int):
     return {"chapter_num": n, "content": content}
 
 
+@router.get("/{n}/plan")
+async def read_plan(project_name: str, n: int):
+    ws = _get_workspace(project_name)
+    content = ws.read_file(f"plans/ch{n:02d}-plan.md")
+    return {"chapter_num": n, "content": content, "exists": bool(content)}
+
+
+@router.get("/{n}/review")
+async def read_review(project_name: str, n: int):
+    ws = _get_workspace(project_name)
+    content = ws.read_file(f"reviews/ch{n:02d}-review.md")
+    return {"chapter_num": n, "content": content, "exists": bool(content)}
+
+
 @router.put("/{n}")
 async def save_chapter(project_name: str, n: int, body: ChapterContentBody):
     ws = _get_workspace(project_name)

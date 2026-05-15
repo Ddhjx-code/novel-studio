@@ -5,6 +5,7 @@ import { useParams } from 'react-router-dom'
 import { useProject } from '../context/ProjectContext'
 import { readChapter, saveChapter } from '../api'
 import ChapterList from '../components/ChapterList'
+import ChatPanel from '../components/ChatPanel'
 import ReviewPanel from '../components/ReviewPanel'
 
 export default function Chapters() {
@@ -14,6 +15,8 @@ export default function Chapters() {
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [chatOpen, setChatOpen] = useState(false)
+  const [chatAgent, setChatAgent] = useState<string | null>(null)
   const editorRef = useRef<unknown>(null)
 
   useEffect(() => {
@@ -58,6 +61,11 @@ export default function Chapters() {
       })
     }
   }
+
+  const handleOpenChat = useCallback((agentName: string) => {
+    setChatAgent(agentName)
+    setChatOpen(true)
+  }, [])
 
   const chapters = projectDetail?.chapters ?? []
 
@@ -109,9 +117,17 @@ export default function Chapters() {
       </div>
 
       {/* Right: Review panel */}
-      <div style={{ width: 300, borderLeft: '1px solid #f0f0f0', overflow: 'auto' }}>
-        <ReviewPanel project={project ?? ''} chapterNum={selectedChapter} />
+      <div style={{ width: 420, borderLeft: '1px solid #f0f0f0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <ReviewPanel project={project ?? ''} chapterNum={selectedChapter} onOpenChat={handleOpenChat} />
       </div>
+
+      <ChatPanel
+        open={chatOpen}
+        agentName={chatAgent}
+        project={project ?? ''}
+        chapterNum={selectedChapter}
+        onClose={() => setChatOpen(false)}
+      />
     </div>
   )
 }
