@@ -79,6 +79,23 @@ class TestListChapters:
         assert workspace.list_chapters() == [1, 2, 3]
 
 
+class TestListPlannedChapters:
+    def test_empty_initially(self, workspace: ProjectWorkspace):
+        assert workspace.list_planned_chapters() == []
+
+    def test_returns_plan_only_chapters(self, workspace: ProjectWorkspace):
+        workspace.write_file("plans/ch01-plan.md", "plan1")
+        workspace.write_file("plans/ch02-plan.md", "plan2")
+        workspace.write_file("plans/ch03-plan.md", "plan3")
+        workspace.write_file("chapters/ch01.md", "text1")
+        assert workspace.list_planned_chapters() == [2, 3]
+
+    def test_excludes_all_written(self, workspace: ProjectWorkspace):
+        workspace.write_file("plans/ch01-plan.md", "plan1")
+        workspace.write_file("chapters/ch01.md", "text1")
+        assert workspace.list_planned_chapters() == []
+
+
 class TestPaths:
     def test_chapter_path(self, workspace: ProjectWorkspace):
         assert workspace.chapter_path(1).name == "ch01.md"

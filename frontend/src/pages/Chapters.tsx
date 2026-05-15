@@ -68,6 +68,17 @@ export default function Chapters() {
   }, [])
 
   const chapters = projectDetail?.chapters ?? []
+  const plannedChapters = projectDetail?.planned_chapters ?? []
+  const writtenSet = new Set(chapters)
+
+  const handleSelectChapter = useCallback((n: number) => {
+    if (writtenSet.has(n)) {
+      loadChapter(n)
+    } else {
+      setSelectedChapter(n)
+      setContent('')
+    }
+  }, [writtenSet, loadChapter])
 
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 128px)', gap: 0 }}>
@@ -75,8 +86,9 @@ export default function Chapters() {
       <div style={{ width: 200, borderRight: '1px solid #f0f0f0', overflow: 'auto' }}>
         <ChapterList
           chapters={chapters}
+          plannedChapters={plannedChapters}
           selectedChapter={selectedChapter}
-          onSelect={loadChapter}
+          onSelect={handleSelectChapter}
         />
       </div>
 
@@ -86,8 +98,13 @@ export default function Chapters() {
           <Typography.Text strong>
             {selectedChapter ? `第 ${selectedChapter} 章` : '请选择章节'}
           </Typography.Text>
+          {selectedChapter && !writtenSet.has(selectedChapter) && (
+            <Typography.Text type="warning" style={{ fontSize: 12 }}>
+              规划中 — 尚未生成正文
+            </Typography.Text>
+          )}
           {saving && <Spin size="small" />}
-          {selectedChapter && (
+          {selectedChapter && writtenSet.has(selectedChapter) && (
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>
               Ctrl+S 保存
             </Typography.Text>
@@ -97,6 +114,13 @@ export default function Chapters() {
           {loading ? (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
               <Spin />
+            </div>
+          ) : selectedChapter && !writtenSet.has(selectedChapter) ? (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', flexDirection: 'column', gap: 8 }}>
+              <Typography.Text type="secondary">本章尚未生成正文</Typography.Text>
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                请在右侧面板查看规划，或前往工作台开始写作
+              </Typography.Text>
             </div>
           ) : (
             <Editor

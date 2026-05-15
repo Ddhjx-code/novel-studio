@@ -99,6 +99,21 @@ class ProjectWorkspace:
                 nums.append(int(m.group(1)))
         return sorted(nums)
 
+    def list_planned_chapters(self) -> list[int]:
+        """Return sorted list of chapter numbers that have plans but no chapter file."""
+        plans_dir = self._root / "plans"
+        if not plans_dir.is_dir():
+            return []
+        written = set(self.list_chapters())
+        nums: list[int] = []
+        for p in plans_dir.iterdir():
+            m = re.match(r"^ch(\d+)-plan\.", p.name)
+            if m:
+                n = int(m.group(1))
+                if n not in written:
+                    nums.append(n)
+        return sorted(nums)
+
     def chapter_path(self, chapter_num: int) -> Path:
         return self._root / "chapters" / f"ch{chapter_num:02d}.md"
 

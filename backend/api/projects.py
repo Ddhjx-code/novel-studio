@@ -49,6 +49,7 @@ async def get_project(name: str):
     return {
         "name": name,
         "chapters": chapters,
+        "planned_chapters": ws.list_planned_chapters(),
         "has_outline": bool(ws.read_file("bible/plot/outline.md")),
         "global_summary_length": len(global_summary),
         "character_state_length": len(character_state),

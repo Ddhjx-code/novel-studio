@@ -1,6 +1,7 @@
 export interface Project {
   name: string
   chapters: number[]
+  planned_chapters: number[]
   has_outline: boolean
   global_summary_length: number
   character_state_length: number
