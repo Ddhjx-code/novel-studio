@@ -12,7 +12,7 @@ FROM python:3.11-slim
 ARG PIP_INDEX=https://pypi.org/simple/
 WORKDIR /app
 
-COPY pyproject.toml ./
+COPY pyproject.toml README.md ./
 COPY backend/ backend/
 RUN pip install --no-cache-dir -i ${PIP_INDEX} .
 
