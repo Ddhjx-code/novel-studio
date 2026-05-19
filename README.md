@@ -24,12 +24,15 @@
 ## Features
 
 - **Outline Generation** — provide a synopsis, get a structured chapter outline
-- **Chapter Generation** — 4-step pipeline (blueprint, draft, continuity check, finalize) powered by specialized agents
-- **Review & Polish** — automated review with actionable feedback, or stylistic polish pass
+- **Staged Chapter Generation** — split into planning (A+B) and writing (C+D+E+F) phases, with discussion between stages
+- **Agent Discussion** — chat with planner/reviewer/writer agents at any point to refine plans and drafts
+- **Review & Polish** — automated 10-dimension review with actionable feedback, or stylistic polish pass
+- **Chapter Editor** — Monaco-based editor with plan/review side panel; plan-only chapters shown with "planning" badge
 - **Bible (Settings Collection)** — character profiles, worldbuilding, plot notes with RAG-powered consistency checking
 - **Prompt Studio** — edit agent system prompts and skill files directly in the browser
 - **Task History** — persistent task tracking with retry support
 - **LLM Settings** — configure LLM provider and model from the UI
+- **WebSocket Streaming** — real-time pipeline progress via WebSocket events
 
 ## Quick Start
 
@@ -41,6 +44,15 @@ cp .env.example .env.local
 
 docker compose up --build
 # Open http://localhost:8080
+```
+
+For China-based servers, use domestic mirrors:
+
+```bash
+docker build \
+  --build-arg NPM_REGISTRY=https://registry.npmmirror.com \
+  --build-arg PIP_INDEX=https://mirrors.aliyun.com/pypi/simple/ \
+  -t novel-studio:1.0 .
 ```
 
 ### Option B: Setup Script
@@ -82,6 +94,16 @@ cd frontend && npm run dev
 # Open http://localhost:5173
 ```
 
+## Workflow
+
+```
+Synopsis → Outline → [Discuss] → Plan (per chapter) → [Discuss] → Write → Review → Polish → Finalize
+                        ↑                                  ↑                   ↑
+                   ChatPanel                          ChatPanel           ChatPanel
+```
+
+Each step can be triggered independently. The author can pause, discuss with agents, edit files manually, and resume at any point.
+
 ## LLM Configuration
 
 Edit `.env.local` or use the **Settings** page in the UI:
@@ -101,27 +123,56 @@ Embedding config is optional — falls back to the LLM config if left empty.
 novel-studio/
 ├── backend/
 │   ├── main.py              # FastAPI entry (API sub-app + static files)
-│   ├── config.py             # Settings from .env.local
-│   ├── api/                  # REST + WebSocket endpoints
-│   ├── agents/               # Agent definition files (.md)
-│   ├── skills/               # Skill definition files
-│   ├── orchestrator/         # Pipeline logic (chapter, outline, review)
-│   ├── projects/             # Workspace + persistence layer
-│   ├── runtime/              # Session + agent management
-│   ├── tools/                # Custom pipeline tools
-│   └── vectorstore/          # Embedding + FAISS integration
+│   ├── config.py            # Settings from .env.local
+│   ├── api/                 # REST + WebSocket endpoints
+│   ├── agents/              # Agent definition files (.md)
+│   ├── skills/              # Skill definition files
+│   ├── orchestrator/        # Pipeline logic (chapter, outline, review)
+│   ├── projects/            # Workspace + persistence layer
+│   ├── runtime/             # Session + agent management
+│   ├── tools/               # Custom pipeline tools
+│   └── vectorstore/         # Embedding + FAISS integration
 ├── frontend/
 │   ├── src/
-│   │   ├── pages/            # Workbench, Bible, PromptStudio, Settings
-│   │   ├── components/       # Shared UI components
-│   │   ├── hooks/            # WebSocket, custom hooks
-│   │   └── api.ts            # Backend API client
-│   └── vite.config.ts        # Dev proxy config
-├── pyproject.toml            # Python dependencies
-├── setup.sh                  # One-click setup script
-├── Dockerfile                # Multi-stage build
-├── docker-compose.yml        # Docker Compose config
-└── .env.example              # LLM config template
+│   │   ├── pages/           # Projects, Workbench, Chapters, Bible, PromptStudio, Settings
+│   │   ├── components/      # ChatPanel, ReviewPanel, ChapterList, MarkdownViewer, etc.
+│   │   ├── hooks/           # useChat, usePipeline, useWebSocket
+│   │   └── api.ts           # Backend API client
+│   └── vite.config.ts       # Dev proxy config
+├── pyproject.toml           # Python dependencies
+├── setup.sh                 # One-click setup script
+├── Dockerfile               # Multi-stage build (supports build-arg mirrors)
+├── docker-compose.yml       # Docker Compose config
+├── .dockerignore            # Excludes node_modules/dist from build context
+└── .env.example             # LLM config template
+```
+
+## Nginx Deployment
+
+Example nginx reverse proxy config for production:
+
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /api/ws {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_read_timeout 600s;
+    }
+}
 ```
 
 ## Running Tests
