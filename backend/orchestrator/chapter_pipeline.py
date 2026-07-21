@@ -20,6 +20,42 @@ log = logging.getLogger(__name__)
 
 EventCallback = Callable[[dict[str, Any]], Awaitable[None]]
 
+# ---------------------------------------------------------------------------
+# Retry helpers
+# ---------------------------------------------------------------------------
+_RETRY_MAX = 3
+_RETRY_BASE_DELAY = 2.0  # seconds: 2 -> 4 -> 8
+import re as _re
+
+def _is_rate_limited(error: Exception) -> bool:
+    """Return True when the error looks like a rate-limit (429) response."""
+    msg = str(error)
+    return bool(_re.search(r"(429|rate.limit)", msg, _re.IGNORECASE))
+
+
+async def _retry_step(fn, step_label: str) -> str:
+    """Call `fn()` with up to _RETRY_MAX attempts + exponential backoff on 429."""
+    import asyncio as _asyncio
+    last_err: Exception | None = None
+    for attempt in range(1, _RETRY_MAX + 1):
+        try:
+            return await fn()
+        except _asyncio.CancelledError:
+            raise
+        except Exception as e:
+            last_err = e
+            if not _is_rate_limited(e) or attempt == _RETRY_MAX:
+                raise
+            delay = _RETRY_BASE_DELAY * (2 ** (attempt - 1))
+            log.warning(
+                "Retrying step %s (attempt %d/%d after %.1fs): %s",
+                step_label, attempt, _RETRY_MAX, delay, str(e)[:120],
+            )
+            await _asyncio.sleep(delay)
+    raise last_err  # type: ignore[misc]
+# ---------------------------------------------------------------------------
+
+
 
 class PipelineStep(str, Enum):
     CONTEXT = "A"
@@ -110,7 +146,7 @@ class ChapterPipeline:
                 })
 
             try:
-                output = await self._execute_step(step, context_bundle, event_callback)
+                output = await _retry_step(lambda: self._execute_step(step, context_bundle, event_callback), step.value)
                 result.outputs[step.value] = output
                 result.steps_completed.append(step.value)
 

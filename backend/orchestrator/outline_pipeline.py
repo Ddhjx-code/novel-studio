@@ -13,6 +13,41 @@ from backend.runtime.session import SessionManager
 
 log = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Retry helpers
+# ---------------------------------------------------------------------------
+_RETRY_MAX = 3
+_RETRY_BASE_DELAY = 2.0  # seconds: 2 -> 4 -> 8
+import re as _re
+
+def _is_rate_limited(error: Exception) -> bool:
+    """Return True when the error looks like a rate-limit (429) response."""
+    msg = str(error)
+    return bool(_re.search(r"(429|rate.limit)", msg, _re.IGNORECASE))
+
+async def _retry_step(fn, step_label: str) -> str:
+    """Call `fn()` with up to _RETRY_MAX attempts + exponential backoff on 429."""
+    import asyncio as _asyncio
+    last_err: Exception | None = None
+    for attempt in range(1, _RETRY_MAX + 1):
+        try:
+            return await fn()
+        except _asyncio.CancelledError:
+            raise
+        except Exception as e:
+            last_err = e
+            if not _is_rate_limited(e) or attempt == _RETRY_MAX:
+                raise
+            delay = _RETRY_BASE_DELAY * (2 ** (attempt - 1))
+            log.warning(
+                "Retrying step %s (attempt %d/%d after %.1fs): %s",
+                step_label, attempt, _RETRY_MAX, delay, str(e)[:120],
+            )
+            await _asyncio.sleep(delay)
+    raise last_err  # type: ignore[misc]
+# ---------------------------------------------------------------------------
+
+
 EventCallback = Callable[[dict[str, Any]], Awaitable[None]]
 
 
@@ -59,8 +94,12 @@ class OutlinePipeline:
 
         try:
             prompt = self._build_prompt()
-            await session.submit(prompt)
-            output = await self._collect_output(queue)
+
+            async def _run_session():
+                await session.submit(prompt)
+                return await self._collect_output(queue)
+
+            output = await _retry_step(_run_session, "outline")
 
             self._workspace.write_file("bible/plot/outline.md", output)
             result.outline_path = "bible/plot/outline.md"

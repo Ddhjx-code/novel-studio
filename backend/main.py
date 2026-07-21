@@ -73,6 +73,9 @@ def _build_api_app() -> FastAPI:
     from backend.api.tasks import router as tasks_router
     api_app.include_router(tasks_router)
 
+    from backend.api.pipelines import router as pipelines_router
+    api_app.include_router(pipelines_router)
+
     from backend.api.settings import router as settings_router
     api_app.include_router(settings_router)
 

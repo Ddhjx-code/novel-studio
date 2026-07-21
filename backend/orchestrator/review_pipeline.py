@@ -16,6 +16,39 @@ from backend.vectorstore.embedding import EmbeddingConfig
 
 log = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Retry helpers
+# ---------------------------------------------------------------------------
+_RETRY_MAX = 3
+_RETRY_BASE_DELAY = 2.0  # seconds: 2 -> 4 -> 8
+import re as _re
+
+def _is_rate_limited(error: Exception) -> bool:
+    msg = str(error)
+    return bool(_re.search(r"(429|rate.limit)", msg, _re.IGNORECASE))
+
+async def _retry_step(fn, step_label: str) -> str:
+    import asyncio as _asyncio
+    last_err: Exception | None = None
+    for attempt in range(1, _RETRY_MAX + 1):
+        try:
+            return await fn()
+        except _asyncio.CancelledError:
+            raise
+        except Exception as e:
+            last_err = e
+            if not _is_rate_limited(e) or attempt == _RETRY_MAX:
+                raise
+            delay = _RETRY_BASE_DELAY * (2 ** (attempt - 1))
+            log.warning(
+                "Retrying step %s (attempt %d/%d after %.1fs): %s",
+                step_label, attempt, _RETRY_MAX, delay, str(e)[:120],
+            )
+            await _asyncio.sleep(delay)
+    raise last_err  # type: ignore[misc]
+# ---------------------------------------------------------------------------
+
+
 EventCallback = Callable[[dict[str, Any]], Awaitable[None]]
 
 
@@ -74,8 +107,11 @@ class ReviewPipeline:
 
         try:
             prompt = await self._build_prompt(chapter_text)
-            await session.submit(prompt)
-            output = await self._collect_output(queue)
+            async def _run_session():
+                await session.submit(prompt)
+                return await self._collect_output(queue)
+
+            output = await _retry_step(_run_session, self._step.value if hasattr(self, '_step') else "review")
 
             output_path = self._save_output(output)
             result.output_path = output_path

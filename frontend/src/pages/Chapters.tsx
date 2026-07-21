@@ -15,6 +15,7 @@ export default function Chapters() {
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [chatOpen, setChatOpen] = useState(false)
   const [chatAgent, setChatAgent] = useState<string | null>(null)
   const editorRef = useRef<unknown>(null)
@@ -26,12 +27,15 @@ export default function Chapters() {
   const loadChapter = useCallback(async (n: number) => {
     if (!project) return
     setLoading(true)
+    setError(null)
     try {
       const data = await readChapter(project, n)
       setContent(data.content)
       setSelectedChapter(n)
     } catch {
-      message.error(`加载第 ${n} 章失败`)
+      setContent('')
+      const msg = `加载第 ${n} 章失败（文件可能不存在或已被删除），请重试或重新生成`
+      setError(msg)
     } finally {
       setLoading(false)
     }
@@ -109,6 +113,11 @@ export default function Chapters() {
           {selectedChapter && writtenSet.has(selectedChapter) && (
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>
               Ctrl+S 保存
+            </Typography.Text>
+          )}
+          {error && selectedChapter && (
+            <Typography.Text type="danger" style={{ fontSize: 12 }}>
+              {error}
             </Typography.Text>
           )}
         </div>
